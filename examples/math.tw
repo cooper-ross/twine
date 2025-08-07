@@ -1,0 +1,26 @@
+print("Math Functions Examples");
+
+// Basic examples
+print("Absolute value:");
+print("abs(-42) = " + str(abs(-42))); // 42
+
+print("Square root:");
+print("sqrt(16) = " + str(sqrt(16))); // 4
+
+print("Power:");
+print("pow(2, 3) = " + str(pow(2, 3))); // 8
+
+print("Rounding:");
+print("round(3.14159, 2) = " + str(round(3.14159, 2))); // 3.14
+
+print("Min/Max:");
+print("min(3, -2, 5, 0) = " + str(min(3, -2, 5, 0))); // -2
+print("max(3, -2, 5, 0) = " + str(max(3, -2, 5, 0))); // 5
+
+// Calculate hypotenuse of a right triangle
+let a = 3;
+let b = 4;
+let hypotenuse = sqrt(pow(a, 2) + pow(b, 2));
+print("Hypotenuse of right triangle with sides 3 and 4:");
+print(hypotenuse); // 5
+
