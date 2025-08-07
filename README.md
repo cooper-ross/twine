@@ -4,7 +4,6 @@ A high-performance compiler for a dynamic language, built in modern C++17 with d
 
 ## Table of Contents
 
-- [Overview](#overview)
 - [Features](#features)
 - [Prerequisites](#prerequisites)
 - [Building the Compiler](#building-the-compiler)
