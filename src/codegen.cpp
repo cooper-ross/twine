@@ -111,6 +111,10 @@ void CodeGenerator::declareBuiltinFunctions() {
     declarePow();
     declareSqrt();
     
+    // Declare random number functions
+    declareRand();
+    declareSrand();
+    
     // Declare string helper functions
     declareStrlen();
     declareMalloc();
@@ -337,6 +341,24 @@ void CodeGenerator::declareBuiltinFunctions() {
     );
     
     functions["sqrt"] = sqrtFunc;
+    
+    // Create random function (returns random number from 0 to 1)
+    std::vector<llvm::Type*> randomParams = {};
+    
+    llvm::FunctionType* randomType = llvm::FunctionType::get(
+        llvm::Type::getDoubleTy(*context),  // returns double
+        randomParams,
+        false  // not variadic
+    );
+    
+    llvm::Function* randomFunc = llvm::Function::Create(
+        randomType,
+        llvm::Function::ExternalLinkage,
+        "random",
+        module.get()
+    );
+    
+    functions["random"] = randomFunc;
 }
 
 llvm::Function* CodeGenerator::declarePrintf() {
@@ -642,6 +664,50 @@ llvm::Function* CodeGenerator::declareSqrt() {
     
     functions["mathSqrt"] = sqrtFunc;  // Store as mathSqrt to avoid name clash with our built-in sqrt
     return sqrtFunc;
+}
+
+llvm::Function* CodeGenerator::declareRand() {
+    // int rand(void)
+    std::vector<llvm::Type*> randParams = {};
+    
+    llvm::FunctionType* randType = llvm::FunctionType::get(
+        llvm::Type::getInt32Ty(*context),  // returns int
+        randParams,
+        false  // not variadic
+    );
+    
+    llvm::Function* randFunc = llvm::Function::Create(
+        randType,
+        llvm::Function::ExternalLinkage,
+        "rand",
+        module.get()
+    );
+    
+    functions["rand"] = randFunc;
+    return randFunc;
+}
+
+llvm::Function* CodeGenerator::declareSrand() {
+    // void srand(unsigned int seed)
+    std::vector<llvm::Type*> srandParams = {
+        llvm::Type::getInt32Ty(*context)  // unsigned int seed
+    };
+    
+    llvm::FunctionType* srandType = llvm::FunctionType::get(
+        llvm::Type::getVoidTy(*context),  // returns void
+        srandParams,
+        false  // not variadic
+    );
+    
+    llvm::Function* srandFunc = llvm::Function::Create(
+        srandType,
+        llvm::Function::ExternalLinkage,
+        "srand",
+        module.get()
+    );
+    
+    functions["srand"] = srandFunc;
+    return srandFunc;
 }
 
 llvm::Function* CodeGenerator::declarePuts() {
@@ -1353,6 +1419,148 @@ void CodeGenerator::visit(CallExpression* node) {
         
         // Call sqrt (C standard library) for square root
         llvm::Value* result = builder->CreateCall(functions["mathSqrt"], {value});
+        
+        // Return the result
+        valueStack.push(result);
+        return;
+    } else if (node->name == "random") {
+        // Handle random specially - returns random number from 0 to 1
+        // We implement our own high-quality Linear Congruential Generator (LCG)
+        // instead of relying on the poor-quality system rand()
+        if (!node->arguments.empty()) {
+            std::cerr << "Warning: random() function takes no arguments, ignoring provided arguments" << std::endl;
+        }
+        
+        // Create a global variable to store our LCG state
+        llvm::GlobalVariable* stateVar = module->getGlobalVariable("_random_state");
+        if (!stateVar) {
+            // Initialize with a non-zero value that will be replaced with time-based seed
+            stateVar = new llvm::GlobalVariable(
+                *module,
+                llvm::Type::getInt64Ty(*context),  // 64-bit state
+                false,  // not constant
+                llvm::GlobalValue::InternalLinkage,
+                llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), 1),  // initial non-zero value
+                "_random_state"
+            );
+        }
+        
+        // Create a global variable to track if we've seeded already
+        llvm::GlobalVariable* seededVar = module->getGlobalVariable("_random_seeded");
+        if (!seededVar) {
+            seededVar = new llvm::GlobalVariable(
+                *module,
+                llvm::Type::getInt1Ty(*context),  // boolean type
+                false,  // not constant
+                llvm::GlobalValue::InternalLinkage,
+                llvm::ConstantInt::get(llvm::Type::getInt1Ty(*context), 0),  // initial value: false
+                "_random_seeded"
+            );
+        }
+        
+        // Check if we've already seeded
+        llvm::Value* alreadySeeded = builder->CreateLoad(
+            llvm::Type::getInt1Ty(*context), 
+            seededVar, 
+            "seeded_check"
+        );
+        
+        // Create basic blocks for seeding logic
+        llvm::BasicBlock* seedBlock = llvm::BasicBlock::Create(*context, "seed_random", currentFunction);
+        llvm::BasicBlock* skipSeedBlock = llvm::BasicBlock::Create(*context, "skip_seed", currentFunction);
+        llvm::BasicBlock* afterSeedBlock = llvm::BasicBlock::Create(*context, "after_seed", currentFunction);
+        
+        // Branch based on whether we've already seeded
+        builder->CreateCondBr(alreadySeeded, skipSeedBlock, seedBlock);
+        
+        // Seed block
+        builder->SetInsertPoint(seedBlock);
+        
+        // Declare time function if not already declared
+        if (!module->getFunction("time")) {
+            std::vector<llvm::Type*> timeParams = {
+                llvm::PointerType::getUnqual(*context)  // time_t *
+            };
+            
+            llvm::FunctionType* timeType = llvm::FunctionType::get(
+                llvm::Type::getInt64Ty(*context),  // returns time_t (long)
+                timeParams,
+                false  // not variadic
+            );
+            
+            llvm::Function::Create(
+                timeType,
+                llvm::Function::ExternalLinkage,
+                "time",
+                module.get()
+            );
+        }
+        
+        // Get high-resolution seed by combining time with additional entropy
+        llvm::Value* nullPtr = llvm::ConstantPointerNull::get(llvm::PointerType::getUnqual(*context));
+        llvm::Value* currentTime = builder->CreateCall(module->getFunction("time"), {nullPtr});
+        
+        // Create a much better seed by combining time with stack address (for additional entropy)
+        // Get the address of a local variable to add randomness
+        llvm::AllocaInst* localVar = builder->CreateAlloca(llvm::Type::getInt32Ty(*context), nullptr, "entropy");
+        llvm::Value* stackAddr = builder->CreatePtrToInt(localVar, llvm::Type::getInt64Ty(*context));
+        
+        // Mix the time and stack address using a good hash function
+        // seed = (time * 1103515245ULL + stackAddr * 12345ULL + 1) ^ (stackAddr >> 16)
+        llvm::Value* multiplier1 = llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), 1103515245ULL);
+        llvm::Value* multiplier2 = llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), 12345ULL);
+        llvm::Value* increment = llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), 1);
+        llvm::Value* shift16 = llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), 16);
+        
+        llvm::Value* timePart = builder->CreateMul(currentTime, multiplier1);
+        llvm::Value* addrPart = builder->CreateMul(stackAddr, multiplier2);
+        llvm::Value* combined = builder->CreateAdd(timePart, addrPart);
+        combined = builder->CreateAdd(combined, increment);
+        
+        llvm::Value* addrShifted = builder->CreateLShr(stackAddr, shift16);
+        llvm::Value* finalSeed = builder->CreateXor(combined, addrShifted);
+        
+        // Store the seed as our initial state
+        builder->CreateStore(finalSeed, stateVar);
+        
+        // Mark as seeded
+        builder->CreateStore(llvm::ConstantInt::get(llvm::Type::getInt1Ty(*context), 1), seededVar);
+        
+        builder->CreateBr(afterSeedBlock);
+        
+        // Skip seed block
+        builder->SetInsertPoint(skipSeedBlock);
+        builder->CreateBr(afterSeedBlock);
+        
+        // After seed block - generate the next random number using our LCG
+        builder->SetInsertPoint(afterSeedBlock);
+        
+        // Load current state
+        llvm::Value* state = builder->CreateLoad(llvm::Type::getInt64Ty(*context), stateVar, "current_state");
+        
+        // High-quality LCG constants (from Numerical Recipes)
+        // next_state = (state * 1664525ULL + 1013904223ULL) & 0xFFFFFFFFFFFFFFFFULL
+        llvm::Value* a = llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), 1664525ULL);
+        llvm::Value* c = llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), 1013904223ULL);
+        
+        llvm::Value* nextState = builder->CreateMul(state, a);
+        nextState = builder->CreateAdd(nextState, c);
+        
+        // Store the new state
+        builder->CreateStore(nextState, stateVar);
+        
+        // Extract the high bits for better distribution
+        // Use the upper 32 bits shifted right by 16 for even better distribution
+        llvm::Value* shift32 = llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), 32);
+        llvm::Value* upperBits = builder->CreateLShr(nextState, shift32);
+        llvm::Value* randInt = builder->CreateTrunc(upperBits, llvm::Type::getInt32Ty(*context));
+        
+        // Convert to double
+        llvm::Value* randDouble = builder->CreateUIToFP(randInt, llvm::Type::getDoubleTy(*context));
+        
+        // Divide by 2^32 to get a value between 0 and 1
+        llvm::Value* divisor = llvm::ConstantFP::get(*context, llvm::APFloat(4294967296.0)); // 2^32
+        llvm::Value* result = builder->CreateFDiv(randDouble, divisor);
         
         // Return the result
         valueStack.push(result);

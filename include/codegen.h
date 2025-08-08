@@ -61,6 +61,10 @@ private:
     llvm::Function* declarePow();
     llvm::Function* declareSqrt();
     
+    // Random number functions
+    llvm::Function* declareRand();
+    llvm::Function* declareSrand();
+    
     // String library functions
     void declareStrlen();
     void declareMalloc();

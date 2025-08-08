@@ -1,0 +1,32 @@
+// Random number demonstration
+print("Welcome to the Random Number Demo!");
+print("");
+
+// Basic random numbers
+print("Five random numbers between 0 and 1:");
+for (let i = 0; i < 15; i = i + 1) {
+    print(str(random()));
+}
+
+print("");
+
+// Dice roll simulation
+print("Rolling dice 5 times:");
+for (let i = 0; i < 5; i = i + 1) {
+    let roll = int(str(random() * 6 + 1));
+    print("Roll " + str(i + 1) + ": " + str(roll));
+}
+
+print("");
+
+// Random number guessing game
+print("I'm thinking of a number between 1 and 10...");
+let secretNumber = int(str(random() * 10 + 1));
+print("Guess the number:");
+let guess = int(input());
+
+if (guess == secretNumber) {
+    print("Congratulations! You guessed it!");
+} else {
+    print("Sorry! The number was " + str(secretNumber));
+}

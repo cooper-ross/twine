@@ -44,6 +44,7 @@ A high-performance compiler for a dynamic language, built in modern C++17 with d
     - `max(a, b, ...)`: Find maximum value
     - `pow(x, y)`: Raise x to power of y
     - `sqrt(x)`: Calculate square root
+    - `random()`: Generate random number from 0 to 1
 - **Comments**:
   - Single-line: `// comment`
   - Multi-line: `/* comment */`
@@ -352,6 +353,8 @@ print("Round 3.7: " + str(round(3.7))); // 4
 print("Round PI to 2 decimals: " + str(round(3.14159, 2))); // 3.14
 print("Min of 5 and 10: " + str(min(5, 10))); // 5
 print("Max of values: " + str(max(3, 7, 2))); // 7
+print("Random number: " + str(random())); // e.g., 0.573821
+print("Random dice roll (1-6): " + str(int(str(random() * 6 + 1)))); // e.g., 4
 
 // Practical example
 print("Enter your age:");
