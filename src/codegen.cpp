@@ -1590,6 +1590,174 @@ void CodeGenerator::visit(CallExpression* node) {
         llvm::Value* result = builder->CreateUIToFP(length, llvm::Type::getDoubleTy(*context));
         valueStack.push(result);
         return;
+    } else if (node->name == "upper") {
+        // Handle upper specially - converts string to uppercase
+        if (node->arguments.size() != 1) {
+            throw std::runtime_error("upper() expects exactly 1 argument");
+        }
+        
+        node->arguments[0]->accept(this);
+        llvm::Value* value = valueStack.top();
+        valueStack.pop();
+        
+        if (!value->getType()->isPointerTy()) {
+            throw std::runtime_error("upper() expects a string argument");
+        }
+        
+        llvm::Function* strlenFunc = module->getFunction("strlen");
+        if (!strlenFunc) {
+            declareStrlen();
+            strlenFunc = module->getFunction("strlen");
+        }
+        
+        llvm::Value* length = builder->CreateCall(strlenFunc, {value});
+        
+        // Allocate memory for the result string (length + 1 for null terminator)
+        llvm::Function* mallocFunc = module->getFunction("malloc");
+        if (!mallocFunc) {
+            declareMalloc();
+            mallocFunc = module->getFunction("malloc");
+        }
+        
+        llvm::Value* lengthPlus1 = builder->CreateAdd(length, 
+            llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), 1));
+        llvm::Value* resultBuffer = builder->CreateCall(mallocFunc, {lengthPlus1});
+        
+        llvm::BasicBlock* loopCondBlock = llvm::BasicBlock::Create(*context, "loop_cond", currentFunction);
+        llvm::BasicBlock* loopBodyBlock = llvm::BasicBlock::Create(*context, "loop_body", currentFunction);
+        llvm::BasicBlock* loopEndBlock = llvm::BasicBlock::Create(*context, "loop_end", currentFunction);
+        
+        llvm::AllocaInst* indexVar = builder->CreateAlloca(llvm::Type::getInt64Ty(*context), nullptr, "index");
+        builder->CreateStore(llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), 0), indexVar);
+        
+        builder->CreateBr(loopCondBlock);
+        
+        // index < length
+        builder->SetInsertPoint(loopCondBlock);
+        llvm::Value* currentIndex = builder->CreateLoad(llvm::Type::getInt64Ty(*context), indexVar, "current_index");
+        llvm::Value* condition = builder->CreateICmpULT(currentIndex, length, "loop_condition");
+        builder->CreateCondBr(condition, loopBodyBlock, loopEndBlock);
+        
+        builder->SetInsertPoint(loopBodyBlock);
+        
+        llvm::Value* srcPtr = builder->CreateInBoundsGEP(llvm::Type::getInt8Ty(*context), value, currentIndex);
+        llvm::Value* srcChar = builder->CreateLoad(llvm::Type::getInt8Ty(*context), srcPtr, "src_char");
+        
+        // Check if character is lowercase (between 'a' and 'z')
+        llvm::Value* charA = llvm::ConstantInt::get(llvm::Type::getInt8Ty(*context), 97); // 'a'
+        llvm::Value* charZ = llvm::ConstantInt::get(llvm::Type::getInt8Ty(*context), 122); // 'z'
+        llvm::Value* isLowercase = builder->CreateAnd(
+            builder->CreateICmpUGE(srcChar, charA),
+            builder->CreateICmpULE(srcChar, charZ)
+        );
+        
+        // Convert to uppercase by subtracting 32 if it's lowercase
+        llvm::Value* upperOffset = llvm::ConstantInt::get(llvm::Type::getInt8Ty(*context), 32);
+        llvm::Value* upperChar = builder->CreateSub(srcChar, upperOffset);
+        llvm::Value* resultChar = builder->CreateSelect(isLowercase, upperChar, srcChar);
+        
+        // Store character in result buffer
+        llvm::Value* dstPtr = builder->CreateInBoundsGEP(llvm::Type::getInt8Ty(*context), resultBuffer, currentIndex);
+        builder->CreateStore(resultChar, dstPtr);
+        
+        // Increment index
+        llvm::Value* nextIndex = builder->CreateAdd(currentIndex, 
+            llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), 1));
+        builder->CreateStore(nextIndex, indexVar);
+        builder->CreateBr(loopCondBlock);
+        
+        // Add null terminator
+        builder->SetInsertPoint(loopEndBlock);
+        llvm::Value* nullTermPtr = builder->CreateInBoundsGEP(llvm::Type::getInt8Ty(*context), resultBuffer, length);
+        builder->CreateStore(llvm::ConstantInt::get(llvm::Type::getInt8Ty(*context), 0), nullTermPtr);
+        
+        valueStack.push(resultBuffer);
+        return;
+    } else if (node->name == "lower") {
+        // Handle lower specially - converts string to lowercase
+        if (node->arguments.size() != 1) {
+            throw std::runtime_error("lower() expects exactly 1 argument");
+        }
+        
+        // Evaluate the argument
+        node->arguments[0]->accept(this);
+        llvm::Value* value = valueStack.top();
+        valueStack.pop();
+        
+        if (!value->getType()->isPointerTy()) {
+            throw std::runtime_error("lower() expects a string argument");
+        }
+        
+        llvm::Function* strlenFunc = module->getFunction("strlen");
+        if (!strlenFunc) {
+            declareStrlen();
+            strlenFunc = module->getFunction("strlen");
+        }
+        
+        // Get the length of the input string
+        llvm::Value* length = builder->CreateCall(strlenFunc, {value});
+        
+        // Allocate memory for the result string (length + 1 for null terminator)
+        llvm::Function* mallocFunc = module->getFunction("malloc");
+        if (!mallocFunc) {
+            declareMalloc();
+            mallocFunc = module->getFunction("malloc");
+        }
+        
+        llvm::Value* lengthPlus1 = builder->CreateAdd(length, 
+            llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), 1));
+        llvm::Value* resultBuffer = builder->CreateCall(mallocFunc, {lengthPlus1});
+        
+        llvm::BasicBlock* loopCondBlock = llvm::BasicBlock::Create(*context, "loop_cond", currentFunction);
+        llvm::BasicBlock* loopBodyBlock = llvm::BasicBlock::Create(*context, "loop_body", currentFunction);
+        llvm::BasicBlock* loopEndBlock = llvm::BasicBlock::Create(*context, "loop_end", currentFunction);
+        
+        llvm::AllocaInst* indexVar = builder->CreateAlloca(llvm::Type::getInt64Ty(*context), nullptr, "index");
+        builder->CreateStore(llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), 0), indexVar);
+        
+        builder->CreateBr(loopCondBlock);
+        
+        // index < length
+        builder->SetInsertPoint(loopCondBlock);
+        llvm::Value* currentIndex = builder->CreateLoad(llvm::Type::getInt64Ty(*context), indexVar, "current_index");
+        llvm::Value* condition = builder->CreateICmpULT(currentIndex, length, "loop_condition");
+        builder->CreateCondBr(condition, loopBodyBlock, loopEndBlock);
+        
+        builder->SetInsertPoint(loopBodyBlock);
+        
+        llvm::Value* srcPtr = builder->CreateInBoundsGEP(llvm::Type::getInt8Ty(*context), value, currentIndex);
+        llvm::Value* srcChar = builder->CreateLoad(llvm::Type::getInt8Ty(*context), srcPtr, "src_char");
+        
+        // Check if character is uppercase (between 'A' and 'Z')
+        llvm::Value* charA = llvm::ConstantInt::get(llvm::Type::getInt8Ty(*context), 65); // 'A'
+        llvm::Value* charZ = llvm::ConstantInt::get(llvm::Type::getInt8Ty(*context), 90); // 'Z'
+        llvm::Value* isUppercase = builder->CreateAnd(
+            builder->CreateICmpUGE(srcChar, charA),
+            builder->CreateICmpULE(srcChar, charZ)
+        );
+        
+        // Convert to lowercase by adding 32 if it's uppercase
+        llvm::Value* lowerOffset = llvm::ConstantInt::get(llvm::Type::getInt8Ty(*context), 32);
+        llvm::Value* lowerChar = builder->CreateAdd(srcChar, lowerOffset);
+        llvm::Value* resultChar = builder->CreateSelect(isUppercase, lowerChar, srcChar);
+        
+        // Store character in result buffer
+        llvm::Value* dstPtr = builder->CreateInBoundsGEP(llvm::Type::getInt8Ty(*context), resultBuffer, currentIndex);
+        builder->CreateStore(resultChar, dstPtr);
+        
+        // Increment index
+        llvm::Value* nextIndex = builder->CreateAdd(currentIndex, 
+            llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), 1));
+        builder->CreateStore(nextIndex, indexVar);
+        builder->CreateBr(loopCondBlock);
+        
+        // Add null terminator
+        builder->SetInsertPoint(loopEndBlock);
+        llvm::Value* nullTermPtr = builder->CreateInBoundsGEP(llvm::Type::getInt8Ty(*context), resultBuffer, length);
+        builder->CreateStore(llvm::ConstantInt::get(llvm::Type::getInt8Ty(*context), 0), nullTermPtr);
+        
+        valueStack.push(resultBuffer);
+        return;
     } else if (node->name == "print") {
         // Handle print specially
         if (node->arguments.empty()) {

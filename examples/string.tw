@@ -1,4 +1,20 @@
-// Test the len() function
+// Test string functions: len(), upper(), lower()
 let message = "Hello, World!";
-print("Message: " + message);
-print("Length: " + str(len(message))); // Should be 13
+print("Original message: " + message);
+print("Length: " + str(len(message)));
+print("Uppercase: " + upper(message));
+print("Lowercase: " + lower(message));
+
+// Test with different cases
+let mixedCase = "ThIs Is A tEsT StRiNg";
+print("");
+print("Mixed case: " + mixedCase);
+print("To upper: " + upper(mixedCase));
+print("To lower: " + lower(mixedCase));
+
+// Test with special characters and numbers
+let special = "Hello123!@#";
+print("");
+print("With numbers/symbols: " + special);
+print("Upper: " + upper(special));
+print("Lower: " + lower(special));
