@@ -1,0 +1,4 @@
+// Test the len() function
+let message = "Hello, World!";
+print("Message: " + message);
+print("Length: " + str(len(message))); // Should be 13

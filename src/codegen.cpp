@@ -1565,6 +1565,31 @@ void CodeGenerator::visit(CallExpression* node) {
         // Return the result
         valueStack.push(result);
         return;
+    } else if (node->name == "len") {
+        if (node->arguments.size() != 1) {
+            throw std::runtime_error("len() expects exactly 1 argument");
+        }
+
+        node->arguments[0]->accept(this);
+        llvm::Value* value = valueStack.top();
+        valueStack.pop();
+        
+        if (!value->getType()->isPointerTy()) {
+            throw std::runtime_error("len() expects a string argument");
+        }
+        
+        llvm::Function* strlenFunc = module->getFunction("strlen");
+        if (!strlenFunc) {
+            declareStrlen();
+            strlenFunc = module->getFunction("strlen");
+        }
+        
+        llvm::Value* length = builder->CreateCall(strlenFunc, {value});
+        
+        // Convert from size_t (int64) to double for consistency
+        llvm::Value* result = builder->CreateUIToFP(length, llvm::Type::getDoubleTy(*context));
+        valueStack.push(result);
+        return;
     } else if (node->name == "print") {
         // Handle print specially
         if (node->arguments.empty()) {

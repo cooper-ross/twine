@@ -37,6 +37,7 @@ A high-performance compiler for a dynamic language, built in modern C++17 with d
   - `str(number)`: Convert number to string
   - `num(string)`: Convert string to number  
   - `int(string)`: Convert string to integer
+  - `len(string)`: Return the length of a string
   - **Math Functions**:
     - `abs(x)`: Absolute value
     - `round(x, [decimals])`: Round to nearest integer or decimal place
@@ -344,6 +345,11 @@ print(value);
 let decimal = "99.7";
 let integer = int(decimal); // 99 (truncated)
 print(integer);
+
+// String length function
+let message = "Hello, World!";
+let messageLength = len(message); // 13
+print("Message length: " + str(messageLength));
 
 // Math functions
 print("Absolute value: " + str(abs(-42))); // 42
