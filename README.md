@@ -40,6 +40,7 @@ A high-performance compiler for a dynamic language, built in modern C++17 with d
   - `len(string)`: Return the length of a string
   - `upper(string)`: Convert string to uppercase
   - `lower(string)`: Convert string to lowercase
+  - `includes(haystack, needle)`: Check if haystack contains needle (returns 1.0 or 0.0)
   - **Math Functions**:
     - `abs(x)`: Absolute value
     - `round(x, [decimals])`: Round to nearest integer or decimal place
@@ -358,6 +359,13 @@ print("Uppercase: " + uppercaseMessage);
 
 let lowercaseMessage = lower(message); // "hello, world!"
 print("Lowercase: " + lowercaseMessage);
+
+// String search function
+let text = "The quick brown fox jumps over the lazy dog";
+let hasQuick = includes(text, "quick"); // 1.0 (true)
+let hasCat = includes(text, "cat"); // 0.0 (false)
+print("Contains 'quick': " + str(hasQuick));
+print("Contains 'cat': " + str(hasCat));
 
 // Math functions
 print("Absolute value: " + str(abs(-42))); // 42

@@ -120,6 +120,7 @@ void CodeGenerator::declareBuiltinFunctions() {
     declareMalloc();
     declareStrcpy();
     declareStrcat();
+    declareStrstr();
     
     // Create print function that wraps printf
     std::vector<llvm::Type*> printParams = {
@@ -1758,6 +1759,40 @@ void CodeGenerator::visit(CallExpression* node) {
         
         valueStack.push(resultBuffer);
         return;
+    } else if (node->name == "includes") {
+        // Handle includes specially - checks if haystack contains needle
+        if (node->arguments.size() != 2) {
+            throw std::runtime_error("includes() expects exactly 2 arguments");
+        }
+        
+        node->arguments[0]->accept(this);
+        llvm::Value* haystack = valueStack.top();
+        valueStack.pop();
+
+        node->arguments[1]->accept(this);
+        llvm::Value* needle = valueStack.top();
+        valueStack.pop();
+        
+        if (!haystack->getType()->isPointerTy() || !needle->getType()->isPointerTy()) {
+            throw std::runtime_error("includes() expects two string arguments");
+        }
+
+        llvm::Function* strstrFunc = module->getFunction("strstr");
+        if (!strstrFunc) {
+            declareStrstr();
+            strstrFunc = module->getFunction("strstr");
+        }
+        
+        llvm::Value* result = builder->CreateCall(strstrFunc, {haystack, needle});
+        
+        // strstr returns null if not found, non-null if found
+        llvm::Value* nullPtr = llvm::ConstantPointerNull::get(llvm::PointerType::getUnqual(*context));
+        llvm::Value* found = builder->CreateICmpNE(result, nullPtr);
+        
+        // // Convert boolean to double for consistency
+        llvm::Value* doubleResult = builder->CreateUIToFP(found, llvm::Type::getDoubleTy(*context));
+        valueStack.push(doubleResult);
+        return;
     } else if (node->name == "print") {
         // Handle print specially
         if (node->arguments.empty()) {
@@ -2075,6 +2110,23 @@ void CodeGenerator::declareStrcat() {
     );
     
     llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "strcat", *module);
+}
+
+void CodeGenerator::declareStrstr() {
+    if (module->getFunction("strstr")) return;
+    
+    std::vector<llvm::Type*> params = {
+        llvm::PointerType::getUnqual(*context),  // const char* haystack
+        llvm::PointerType::getUnqual(*context)   // const char* needle
+    };
+    
+    llvm::FunctionType* funcType = llvm::FunctionType::get(
+        llvm::PointerType::getUnqual(*context),  // char* (returns pointer to first occurrence or null)
+        params,
+        false  // not variadic
+    );
+    
+    llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "strstr", *module);
 }
 
 llvm::Value* CodeGenerator::convertToString(llvm::Value* value) {

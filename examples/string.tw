@@ -1,9 +1,19 @@
-// Test string functions: len(), upper(), lower()
+// Test string functions: len(), upper(), lower(), includes()
 let message = "Hello, World!";
 print("Original message: " + message);
 print("Length: " + str(len(message)));
 print("Uppercase: " + upper(message));
 print("Lowercase: " + lower(message));
+
+// Test includes function
+print("");
+print("=== String Search Tests ===");
+print("Message: " + message);
+print("Contains 'World': " + str(includes(message, "World")));
+print("Contains 'world': " + str(includes(message, "world")));
+print("Contains 'Hello': " + str(includes(message, "Hello")));
+print("Contains 'xyz': " + str(includes(message, "xyz")));
+print("Contains '!': " + str(includes(message, "!")));
 
 // Test with different cases
 let mixedCase = "ThIs Is A tEsT StRiNg";
@@ -11,6 +21,8 @@ print("");
 print("Mixed case: " + mixedCase);
 print("To upper: " + upper(mixedCase));
 print("To lower: " + lower(mixedCase));
+print("Contains 'tEsT': " + str(includes(mixedCase, "tEsT")));
+print("Contains 'test': " + str(includes(mixedCase, "test")));
 
 // Test with special characters and numbers
 let special = "Hello123!@#";
@@ -18,3 +30,13 @@ print("");
 print("With numbers/symbols: " + special);
 print("Upper: " + upper(special));
 print("Lower: " + lower(special));
+print("Contains '123': " + str(includes(special, "123")));
+print("Contains '@#': " + str(includes(special, "@#")));
+
+// Edge cases for includes
+print("");
+print("=== Edge Cases ===");
+let empty = "";
+print("Empty string contains 'a': " + str(includes(empty, "a")));
+print("String contains empty: " + str(includes(message, empty)));
+print("Case sensitive test: " + str(includes("ABC", "abc")));

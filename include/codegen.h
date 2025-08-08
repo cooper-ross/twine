@@ -70,6 +70,7 @@ private:
     void declareMalloc();
     void declareStrcpy();
     void declareStrcat();
+    void declareStrstr();
     
     // Type conversion helpers
     llvm::Value* convertToDouble(llvm::Value* value);
