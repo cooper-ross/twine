@@ -1793,6 +1793,134 @@ void CodeGenerator::visit(CallExpression* node) {
         llvm::Value* doubleResult = builder->CreateUIToFP(found, llvm::Type::getDoubleTy(*context));
         valueStack.push(doubleResult);
         return;
+    } else if (node->name == "replace") {
+        // Handle replace specially - replaces first occurrence of old
+        if (node->arguments.size() != 3) {
+            throw std::runtime_error("replace() expects exactly 3 arguments");
+        }
+        
+        node->arguments[0]->accept(this);
+        llvm::Value* haystack = valueStack.top();
+        valueStack.pop();
+        
+        node->arguments[1]->accept(this);
+        llvm::Value* oldStr = valueStack.top();
+        valueStack.pop();
+        
+        node->arguments[2]->accept(this);
+        llvm::Value* newStr = valueStack.top();
+        valueStack.pop();
+        
+        if (!haystack->getType()->isPointerTy() || !oldStr->getType()->isPointerTy() || !newStr->getType()->isPointerTy()) {
+            throw std::runtime_error("replace() expects three string arguments");
+        }
+        
+        llvm::Function* strstrFunc = module->getFunction("strstr");
+        if (!strstrFunc) {
+            declareStrstr();
+            strstrFunc = module->getFunction("strstr");
+        }
+        
+        llvm::Function* strlenFunc = module->getFunction("strlen");
+        if (!strlenFunc) {
+            declareStrlen();
+            strlenFunc = module->getFunction("strlen");
+        }
+        
+        llvm::Function* mallocFunc = module->getFunction("malloc");
+        if (!mallocFunc) {
+            declareMalloc();
+            mallocFunc = module->getFunction("malloc");
+        }
+        
+        llvm::Value* foundPtr = builder->CreateCall(strstrFunc, {haystack, oldStr});
+        llvm::Value* nullPtr = llvm::ConstantPointerNull::get(llvm::PointerType::getUnqual(*context));
+        llvm::Value* found = builder->CreateICmpNE(foundPtr, nullPtr);
+        
+        llvm::BasicBlock* replaceBlock = llvm::BasicBlock::Create(*context, "do_replace", currentFunction);
+        llvm::BasicBlock* noReplaceBlock = llvm::BasicBlock::Create(*context, "no_replace", currentFunction);
+        llvm::BasicBlock* mergeBlock = llvm::BasicBlock::Create(*context, "merge", currentFunction);
+        
+        builder->CreateCondBr(found, replaceBlock, noReplaceBlock);
+        
+        // No replacement needed, just return original string (create a copy)
+        builder->SetInsertPoint(noReplaceBlock);
+        llvm::Value* haystackLen = builder->CreateCall(strlenFunc, {haystack});
+        llvm::Value* haystackLenPlus1 = builder->CreateAdd(haystackLen, 
+            llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), 1));
+        llvm::Value* originalCopy = builder->CreateCall(mallocFunc, {haystackLenPlus1});
+        
+        llvm::Function* strcpyFunc = module->getFunction("strcpy");
+        if (!strcpyFunc) {
+            declareStrcpy();
+            strcpyFunc = module->getFunction("strcpy");
+        }
+        builder->CreateCall(strcpyFunc, {originalCopy, haystack});
+        builder->CreateBr(mergeBlock);
+        
+        builder->SetInsertPoint(replaceBlock);
+        
+        llvm::Value* oldLen = builder->CreateCall(strlenFunc, {oldStr});
+        llvm::Value* newLen = builder->CreateCall(strlenFunc, {newStr});
+        
+        // Calculate prefix length
+        llvm::Value* prefixLen = builder->CreatePtrToInt(foundPtr, llvm::Type::getInt64Ty(*context));
+        llvm::Value* haystackInt = builder->CreatePtrToInt(haystack, llvm::Type::getInt64Ty(*context));
+        prefixLen = builder->CreateSub(prefixLen, haystackInt);
+        
+        // Calculate suffix start
+        llvm::Value* suffixStart = builder->CreateInBoundsGEP(llvm::Type::getInt8Ty(*context), foundPtr, oldLen);
+        llvm::Value* suffixLen = builder->CreateCall(strlenFunc, {suffixStart});
+        
+        // prefix + new + suffix + 1
+        llvm::Value* resultLen = builder->CreateAdd(prefixLen, newLen);
+        resultLen = builder->CreateAdd(resultLen, suffixLen);
+        resultLen = builder->CreateAdd(resultLen, llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), 1));
+        
+        llvm::Value* resultBuffer = builder->CreateCall(mallocFunc, {resultLen});
+        
+        if (!module->getFunction("strncpy")) {
+            std::vector<llvm::Type*> params = {
+                llvm::PointerType::getUnqual(*context),  // char* dest
+                llvm::PointerType::getUnqual(*context),  // const char* src
+                llvm::Type::getInt64Ty(*context)         // size_t n
+            };
+            llvm::FunctionType* funcType = llvm::FunctionType::get(
+                llvm::PointerType::getUnqual(*context),
+                params,
+                false
+            );
+            llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "strncpy", *module);
+        }
+        
+        llvm::Function* strncpyFunc = module->getFunction("strncpy");
+        builder->CreateCall(strncpyFunc, {resultBuffer, haystack, prefixLen});
+        
+        // Add null terminator after prefix
+        llvm::Value* afterPrefix = builder->CreateInBoundsGEP(llvm::Type::getInt8Ty(*context), resultBuffer, prefixLen);
+        builder->CreateStore(llvm::ConstantInt::get(llvm::Type::getInt8Ty(*context), 0), afterPrefix);
+        
+        // Concatenate new string
+        llvm::Function* strcatFunc = module->getFunction("strcat");
+        if (!strcatFunc) {
+            declareStrcat();
+            strcatFunc = module->getFunction("strcat");
+        }
+        builder->CreateCall(strcatFunc, {resultBuffer, newStr});
+        
+        // Concatenate suffix
+        builder->CreateCall(strcatFunc, {resultBuffer, suffixStart});
+        
+        builder->CreateBr(mergeBlock);
+        
+        // Merge block - phi node to select result
+        builder->SetInsertPoint(mergeBlock);
+        llvm::PHINode* resultPhi = builder->CreatePHI(llvm::PointerType::getUnqual(*context), 2, "replace_result");
+        resultPhi->addIncoming(originalCopy, noReplaceBlock);
+        resultPhi->addIncoming(resultBuffer, replaceBlock);
+        
+        valueStack.push(resultPhi);
+        return;
     } else if (node->name == "print") {
         // Handle print specially
         if (node->arguments.empty()) {

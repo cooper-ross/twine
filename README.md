@@ -41,6 +41,7 @@ A high-performance compiler for a dynamic language, built in modern C++17 with d
   - `upper(string)`: Convert string to uppercase
   - `lower(string)`: Convert string to lowercase
   - `includes(haystack, needle)`: Check if haystack contains needle (returns 1.0 or 0.0)
+  - `replace(haystack, old, new)`: Replace first occurrence of old with new in haystack
   - **Math Functions**:
     - `abs(x)`: Absolute value
     - `round(x, [decimals])`: Round to nearest integer or decimal place
@@ -366,6 +367,14 @@ let hasQuick = includes(text, "quick"); // 1.0 (true)
 let hasCat = includes(text, "cat"); // 0.0 (false)
 print("Contains 'quick': " + str(hasQuick));
 print("Contains 'cat': " + str(hasCat));
+
+// String replacement function
+let original = "Hello, World!";
+let replaced = replace(original, "World", "Universe"); // "Hello, Universe!"
+let noChange = replace(original, "xyz", "abc"); // "Hello, World!" (no change)
+print("Original: " + original);
+print("Replaced: " + replaced);
+print("No change: " + noChange);
 
 // Math functions
 print("Absolute value: " + str(abs(-42))); // 42

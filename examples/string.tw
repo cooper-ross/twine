@@ -1,4 +1,4 @@
-// Test string functions: len(), upper(), lower(), includes()
+// Test string functions: len(), upper(), lower(), includes(), replace()
 let message = "Hello, World!";
 print("Original message: " + message);
 print("Length: " + str(len(message)));
@@ -33,10 +33,31 @@ print("Lower: " + lower(special));
 print("Contains '123': " + str(includes(special, "123")));
 print("Contains '@#': " + str(includes(special, "@#")));
 
-// Edge cases for includes
+// Test replace function
+print("");
+print("=== String Replacement Tests ===");
+let sentence = "The cat sat on the mat";
+print("Original: " + sentence);
+print("Replace 'cat' with 'dog': " + replace(sentence, "cat", "dog"));
+print("Replace 'the' with 'a': " + replace(sentence, "the", "a"));
+print("Replace 'xyz' with '123': " + replace(sentence, "xyz", "123"));
+
+// Test with different string lengths
+print("");
+print("=== Replacement Length Tests ===");
+let base = "Hello World";
+print("Base: " + base);
+print("Short to long: " + replace(base, "o", "ooo"));
+print("Long to short: " + replace(base, "ello", "i"));
+print("Same length: " + replace(base, "World", "Earth"));
+print("Replace with empty: " + replace(base, "Hello ", ""));
+
+// Edge cases for includes and replace
 print("");
 print("=== Edge Cases ===");
 let empty = "";
 print("Empty string contains 'a': " + str(includes(empty, "a")));
 print("String contains empty: " + str(includes(message, empty)));
 print("Case sensitive test: " + str(includes("ABC", "abc")));
+print("Replace in empty string: " + replace(empty, "a", "b"));
+print("Replace empty substring: " + replace(message, "", "X"));
