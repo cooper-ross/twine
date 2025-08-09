@@ -1,11 +1,11 @@
 // Test string functions: len(), upper(), lower(), includes(), replace()
+print("=== String Basics ===");
 let message = "Hello, World!";
 print("Original message: " + message);
 print("Length: " + str(len(message)));
 print("Uppercase: " + upper(message));
 print("Lowercase: " + lower(message));
 
-// Test includes function
 print("");
 print("=== String Search Tests ===");
 print("Message: " + message);
@@ -15,18 +15,18 @@ print("Contains 'Hello': " + str(includes(message, "Hello")));
 print("Contains 'xyz': " + str(includes(message, "xyz")));
 print("Contains '!': " + str(includes(message, "!")));
 
-// Test with different cases
-let mixedCase = "ThIs Is A tEsT StRiNg";
 print("");
+print("=== Case Conversion Tests ===");
+let mixedCase = "ThIs Is A tEsT StRiNg";
 print("Mixed case: " + mixedCase);
 print("To upper: " + upper(mixedCase));
 print("To lower: " + lower(mixedCase));
 print("Contains 'tEsT': " + str(includes(mixedCase, "tEsT")));
 print("Contains 'test': " + str(includes(mixedCase, "test")));
 
-// Test with special characters and numbers
-let special = "Hello123!@#";
 print("");
+print("=== Special Characters Tests ===");
+let special = "Hello123!@#";
 print("With numbers/symbols: " + special);
 print("Upper: " + upper(special));
 print("Lower: " + lower(special));

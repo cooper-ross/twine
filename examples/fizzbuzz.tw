@@ -1,3 +1,5 @@
+print("=== FizzBuzz (1-20) ===");
+
 for (let i = 1; i <= 20; i = i + 1) {
     if (i % 15 == 0) {
         print("FizzBuzz");

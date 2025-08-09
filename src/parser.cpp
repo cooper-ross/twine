@@ -266,6 +266,13 @@ std::unique_ptr<Expression> Parser::parseAssignment() {
         if (auto* id = dynamic_cast<Identifier*>(expr.get())) {
             auto value = parseAssignment();
             return std::make_unique<AssignmentExpression>(id->name, std::move(value));
+        } else if (auto* indexExpr = dynamic_cast<IndexExpression*>(expr.get())) {
+            auto value = parseAssignment();
+            return std::make_unique<IndexAssignmentExpression>(
+                std::move(indexExpr->array), 
+                std::move(indexExpr->index), 
+                std::move(value)
+            );
         }
         error(tokens[current - 1], "Invalid assignment target");
     }
@@ -375,6 +382,10 @@ std::unique_ptr<Expression> Parser::parseCall() {
             } else {
                 error(tokens[current - 1], "Can only call functions");
             }
+        } else if (match(TokenType::LEFT_BRACKET)) {
+            auto index = parseExpression();
+            consume(TokenType::RIGHT_BRACKET, "Expected ']' after array index");
+            expr = std::make_unique<IndexExpression>(std::move(expr), std::move(index));
         } else {
             break;
         }
@@ -413,6 +424,19 @@ std::unique_ptr<Expression> Parser::parsePrimary() {
         auto expr = parseExpression();
         consume(TokenType::RIGHT_PAREN, "Expected ')' after expression");
         return expr;
+    }
+    
+    if (match(TokenType::LEFT_BRACKET)) {
+        std::vector<std::unique_ptr<Expression>> elements;
+        
+        if (!check(TokenType::RIGHT_BRACKET)) {
+            do {
+                elements.push_back(parseExpression());
+            } while (match(TokenType::COMMA));
+        }
+        
+        consume(TokenType::RIGHT_BRACKET, "Expected ']' after array element(s)");
+        return std::make_unique<ArrayLiteral>(std::move(elements));
     }
     
     throw error(peek(), "Expected expression");

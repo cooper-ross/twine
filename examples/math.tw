@@ -1,6 +1,6 @@
-print("Math Functions Examples");
+print("=== Math Functions Examples ===");
 
-// Basic examples
+print("=== Basic Functions ===");
 print("Absolute value:");
 print("abs(-42) = " + str(abs(-42))); // 42
 
@@ -17,7 +17,8 @@ print("Min/Max:");
 print("min(3, -2, 5, 0) = " + str(min(3, -2, 5, 0))); // -2
 print("max(3, -2, 5, 0) = " + str(max(3, -2, 5, 0))); // 5
 
-// Calculate hypotenuse of a right triangle
+print("");
+print("=== Practical Examples ===");
 let a = 3;
 let b = 4;
 let hypotenuse = sqrt(pow(a, 2) + pow(b, 2));

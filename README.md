@@ -19,6 +19,7 @@ A high-performance compiler for a dynamic language, built in modern C++17 with d
 - **Variable Declarations**: `let`, `var`, and `const` keywords
 - **Data Types**: 
   - Numbers (integers and floating-point)
+  - Arrays (dynamic, homogeneous)
   - Strings (with escape sequences)
   - Booleans (`true`/`false`)
   - Null values
@@ -31,17 +32,18 @@ A high-performance compiler for a dynamic language, built in modern C++17 with d
   - `if`/`else` statements
   - `while` loops
   - `for` loops with C-style syntax
-- **Built-in Functions**:
+  - **Built-in Functions**:
   - `print(value)`: Print value with newline
   - `input()`: Read input from user
   - `str(number)`: Convert number to string
   - `num(string)`: Convert string to number  
   - `int(string)`: Convert string to integer
-  - `len(string)`: Return the length of a string
+  - `len(string/array)`: Return the length of a string or array
   - `upper(string)`: Convert string to uppercase
   - `lower(string)`: Convert string to lowercase
   - `includes(haystack, needle)`: Check if haystack contains needle (returns 1.0 or 0.0)
   - `replace(haystack, old, new)`: Replace first occurrence of old with new in haystack
+  - `append(array, value)`: Append value to array and return new array
   - **Math Functions**:
     - `abs(x)`: Absolute value
     - `round(x, [decimals])`: Round to nearest integer or decimal place
@@ -375,6 +377,20 @@ let noChange = replace(original, "xyz", "abc"); // "Hello, World!" (no change)
 print("Original: " + original);
 print("Replaced: " + replaced);
 print("No change: " + noChange);
+
+// Arrays
+let numbers = [1, 2, 3, 4, 5];
+print("Array: " + str(numbers[0]) + ", " + str(numbers[1])); // "Array: 1, 2"
+print("Array length: " + str(len(numbers))); // "Array length: 5"
+
+// Array indexing
+let value = numbers[2]; // 3
+numbers[2] = 10; // Modify array element
+
+// Dynamic arrays with append
+let items = [10, 20];
+let moreItems = append(items, 30); // [10, 20, 30]
+let evenMore = append(moreItems, 40); // [10, 20, 30, 40]
 
 // Math functions
 print("Absolute value: " + str(abs(-42))); // 42

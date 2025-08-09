@@ -1,6 +1,8 @@
-print("Fibonacci Sequence Generator");
+print("=== Fibonacci Sequence Generator ===");
 print("Enter the term number (n):");
 
+print("");
+print("=== Generating Sequence ===");
 let a = 0;
 let b = 1;
 let n = int(input()) + 1;

@@ -90,6 +90,19 @@ public:
     void accept(ASTVisitor* visitor) override;
 };
 
+class IndexAssignmentExpression : public Expression {
+public:
+    std::unique_ptr<Expression> array;
+    std::unique_ptr<Expression> index;
+    std::unique_ptr<Expression> value;
+    
+    IndexAssignmentExpression(std::unique_ptr<Expression> arr, 
+                              std::unique_ptr<Expression> idx,
+                              std::unique_ptr<Expression> val)
+        : array(std::move(arr)), index(std::move(idx)), value(std::move(val)) {}
+    void accept(ASTVisitor* visitor) override;
+};
+
 class CallExpression : public Expression {
 public:
     std::string name;
@@ -97,6 +110,25 @@ public:
     
     CallExpression(const std::string& n, std::vector<std::unique_ptr<Expression>> args)
         : name(n), arguments(std::move(args)) {}
+    void accept(ASTVisitor* visitor) override;
+};
+
+class ArrayLiteral : public Expression {
+public:
+    std::vector<std::unique_ptr<Expression>> elements;
+    
+    explicit ArrayLiteral(std::vector<std::unique_ptr<Expression>> elems)
+        : elements(std::move(elems)) {}
+    void accept(ASTVisitor* visitor) override;
+};
+
+class IndexExpression : public Expression {
+public:
+    std::unique_ptr<Expression> array;
+    std::unique_ptr<Expression> index;
+    
+    IndexExpression(std::unique_ptr<Expression> arr, std::unique_ptr<Expression> idx)
+        : array(std::move(arr)), index(std::move(idx)) {}
     void accept(ASTVisitor* visitor) override;
 };
 
@@ -222,7 +254,10 @@ public:
     virtual void visit(BinaryExpression* node) = 0;
     virtual void visit(UnaryExpression* node) = 0;
     virtual void visit(AssignmentExpression* node) = 0;
+    virtual void visit(IndexAssignmentExpression* node) = 0;
     virtual void visit(CallExpression* node) = 0;
+    virtual void visit(ArrayLiteral* node) = 0;
+    virtual void visit(IndexExpression* node) = 0;
     virtual void visit(ExpressionStatement* node) = 0;
     virtual void visit(VariableDeclaration* node) = 0;
     virtual void visit(BlockStatement* node) = 0;

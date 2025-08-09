@@ -1,0 +1,71 @@
+// Test array functionality
+print("=== Array Basics ===");
+
+// Create arrays
+let numbers = [1, 2, 3, 4, 5];
+let mixed = [10, 20.5, 30];
+let empty = [];
+
+// Array length
+print("Numbers array length: " + str(len(numbers)));
+print("Mixed array length: " + str(len(mixed)));
+print("Empty array length: " + str(len(empty)));
+
+// Array indexing
+print("");
+print("=== Array Indexing ===");
+print("First element: " + str(numbers[0]));
+print("Last element: " + str(numbers[4]));
+print("Middle element: " + str(numbers[2]));
+
+// Modify array elements
+numbers[2] = 100;
+print("After modification: " + str(numbers[2]));
+
+// Array append
+print("");
+print("=== Array Append ===");
+let arr = [1, 2];
+print("Original: [" + str(arr[0]) + ", " + str(arr[1]) + "]");
+arr = append(arr, 3);
+print("After append(3): [" + str(arr[0]) + ", " + str(arr[1]) + ", " + str(arr[2]) + "]");
+arr = append(arr, 4);
+print("After append(4): length = " + str(len(arr)));
+
+// Dynamic array building
+print("");
+print("=== Dynamic Array Building ===");
+let dynamic = [];
+for (let i = 0; i < 5; i = i + 1) {
+    dynamic = append(dynamic, i * 10);
+}
+print("Dynamic array length: " + str(len(dynamic)));
+for (let i = 0; i < len(dynamic); i = i + 1) {
+    print("dynamic[" + str(i) + "] = " + str(dynamic[i]));
+}
+
+// Array with expressions
+print("");
+print("=== Array Expressions ===");
+let expr = [1 + 2, 3 * 4, 5 - 1];
+print("Expression array: [" + str(expr[0]) + ", " + str(expr[1]) + ", " + str(expr[2]) + "]");
+
+// Nested array access
+print("");
+print("=== Complex Array Operations ===");
+let data = [100, 200, 300, 400, 500];
+let sum = 0;
+for (let i = 0; i < len(data); i = i + 1) {
+    sum = sum + data[i];
+}
+print("Sum of array elements: " + str(sum));
+print("Average: " + str(sum / len(data)));
+
+// Find max element
+let max = data[0];
+for (let i = 1; i < len(data); i = i + 1) {
+    if (data[i] > max) {
+        max = data[i];
+    }
+}
+print("Max element: " + str(max));

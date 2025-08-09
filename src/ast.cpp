@@ -36,7 +36,19 @@ void AssignmentExpression::accept(ASTVisitor* visitor) {
     visitor->visit(this);
 }
 
+void IndexAssignmentExpression::accept(ASTVisitor* visitor) {
+    visitor->visit(this);
+}
+
 void CallExpression::accept(ASTVisitor* visitor) {
+    visitor->visit(this);
+}
+
+void ArrayLiteral::accept(ASTVisitor* visitor) {
+    visitor->visit(this);
+}
+
+void IndexExpression::accept(ASTVisitor* visitor) {
     visitor->visit(this);
 }
 

@@ -1,9 +1,10 @@
-print("Temperature Converter");
+print("=== Temperature Converter ===");
 print("Enter temperature in Celsius:");
 
 let celsius = int(input()); // Taking input from user
 let fahrenheit = (celsius * 9 / 5) + 32; // Conversion formula
 
-print("Conversion Result");
+print("");
+print("=== Conversion Result ===");
 print(str(celsius) + " degrees in Celsius is " + str(fahrenheit) + " degrees Fahrenheit");
 

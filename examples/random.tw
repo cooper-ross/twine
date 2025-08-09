@@ -1,25 +1,21 @@
 // Random number demonstration
-print("Welcome to the Random Number Demo!");
-print("");
+print("=== Random Number Demo ===");
 
-// Basic random numbers
+print("=== Basic Random Numbers ===");
 print("Five random numbers between 0 and 1:");
 for (let i = 0; i < 15; i = i + 1) {
     print(str(random()));
 }
 
 print("");
-
-// Dice roll simulation
-print("Rolling dice 5 times:");
+print("=== Dice Roll Simulation ===");
 for (let i = 0; i < 5; i = i + 1) {
     let roll = int(str(random() * 6 + 1));
     print("Roll " + str(i + 1) + ": " + str(roll));
 }
 
 print("");
-
-// Random number guessing game
+print("=== Number Guessing Game ===");
 print("I'm thinking of a number between 1 and 10...");
 let secretNumber = int(str(random() * 10 + 1));
 print("Guess the number:");

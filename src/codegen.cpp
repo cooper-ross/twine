@@ -738,6 +738,14 @@ llvm::Value* CodeGenerator::convertToDouble(llvm::Value* value) {
         return value;
     } else if (value->getType()->isIntegerTy()) {
         return builder->CreateSIToFP(value, llvm::Type::getDoubleTy(*context), "cast");
+    } else if (value->getType()->isPointerTy()) {
+        // String to number conversion
+        llvm::Function* atofFunc = module->getFunction("atof");
+        if (!atofFunc) {
+            declareAtof();
+            atofFunc = module->getFunction("atof");
+        }
+        return builder->CreateCall(atofFunc, {value});
     }
     return value;
 }
@@ -749,6 +757,10 @@ llvm::Value* CodeGenerator::convertToInt(llvm::Value* value) {
         return builder->CreateFPToSI(value, llvm::Type::getInt32Ty(*context), "cast");
     }
     return value;
+}
+
+llvm::Value* CodeGenerator::getInt64(int64_t value) {
+    return llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), value);
 }
 
 llvm::Value* CodeGenerator::convertToBool(llvm::Value* value) {
@@ -1567,6 +1579,7 @@ void CodeGenerator::visit(CallExpression* node) {
         valueStack.push(result);
         return;
     } else if (node->name == "len") {
+        // Handle len specially - returns the length of a string or array
         if (node->arguments.size() != 1) {
             throw std::runtime_error("len() expects exactly 1 argument");
         }
@@ -1576,19 +1589,50 @@ void CodeGenerator::visit(CallExpression* node) {
         valueStack.pop();
         
         if (!value->getType()->isPointerTy()) {
-            throw std::runtime_error("len() expects a string argument");
+            throw std::runtime_error("len() expects a string or array argument");
         }
         
+        // Check if it's an array or string by trying to access the size metadata
+        llvm::Type* elementType = llvm::Type::getDoubleTy(*context);
+        llvm::Value* sizePtr = builder->CreateInBoundsGEP(elementType, value,
+            llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), -1));
+        
+        llvm::BasicBlock* arrayBlock = llvm::BasicBlock::Create(*context, "is_array", currentFunction);
+        llvm::BasicBlock* stringBlock = llvm::BasicBlock::Create(*context, "is_string", currentFunction);
+        llvm::BasicBlock* mergeBlock = llvm::BasicBlock::Create(*context, "len_merge", currentFunction);
+        
+        // Check the first byte, if it's a printable character, it's likely a string
+        llvm::Value* firstByte = builder->CreateLoad(llvm::Type::getInt8Ty(*context), 
+            builder->CreateBitCast(value, llvm::PointerType::getUnqual(llvm::Type::getInt8Ty(*context))));
+        llvm::Value* isPrintable = builder->CreateAnd(
+            builder->CreateICmpUGE(firstByte, llvm::ConstantInt::get(llvm::Type::getInt8Ty(*context), 32)),
+            builder->CreateICmpULE(firstByte, llvm::ConstantInt::get(llvm::Type::getInt8Ty(*context), 126))
+        );
+        
+        builder->CreateCondBr(isPrintable, stringBlock, arrayBlock);
+        
+        // Array block - get size from metadata
+        builder->SetInsertPoint(arrayBlock);
+        llvm::Value* arraySize = builder->CreateLoad(elementType, sizePtr);
+        builder->CreateBr(mergeBlock);
+        
+        // String block - use strlen
+        builder->SetInsertPoint(stringBlock);
         llvm::Function* strlenFunc = module->getFunction("strlen");
         if (!strlenFunc) {
             declareStrlen();
             strlenFunc = module->getFunction("strlen");
         }
+        llvm::Value* strLength = builder->CreateCall(strlenFunc, {value});
+        llvm::Value* strLengthDouble = builder->CreateUIToFP(strLength, elementType);
+        builder->CreateBr(mergeBlock);
         
-        llvm::Value* length = builder->CreateCall(strlenFunc, {value});
+        // Merge block
+        builder->SetInsertPoint(mergeBlock);
+        llvm::PHINode* result = builder->CreatePHI(elementType, 2);
+        result->addIncoming(arraySize, arrayBlock);
+        result->addIncoming(strLengthDouble, stringBlock);
         
-        // Convert from size_t (int64) to double for consistency
-        llvm::Value* result = builder->CreateUIToFP(length, llvm::Type::getDoubleTy(*context));
         valueStack.push(result);
         return;
     } else if (node->name == "upper") {
@@ -1921,6 +1965,86 @@ void CodeGenerator::visit(CallExpression* node) {
         
         valueStack.push(resultPhi);
         return;
+    } else if (node->name == "append") {
+        // Handle append specially - appends element to array and returns new array
+        if (node->arguments.size() != 2) {
+            throw std::runtime_error("append() expects exactly 2 arguments");
+        }
+        
+        node->arguments[0]->accept(this);
+        llvm::Value* arrayPtr = valueStack.top();
+        valueStack.pop();
+        
+        node->arguments[1]->accept(this);
+        llvm::Value* newValue = valueStack.top();
+        valueStack.pop();
+        
+        if (!arrayPtr->getType()->isPointerTy()) {
+            throw std::runtime_error("append() expects an array as first argument");
+        }
+        
+        llvm::Type* elementType = llvm::Type::getDoubleTy(*context);
+        newValue = convertToDouble(newValue);
+        
+        llvm::Value* sizePtr = builder->CreateInBoundsGEP(elementType, arrayPtr, getInt64(-1));
+        llvm::Value* currentSize = builder->CreateLoad(elementType, sizePtr);
+        llvm::Value* currentSizeInt = builder->CreateFPToUI(currentSize, llvm::Type::getInt64Ty(*context));
+        
+        // Allocate new array with size + 1
+        llvm::Value* newSize = builder->CreateAdd(currentSizeInt, 
+            llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), 1));
+        llvm::Value* elementSize = llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), 8);
+        llvm::Value* totalElements = builder->CreateAdd(newSize, 
+            llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), 1)); // +1 for size metadata
+        llvm::Value* totalSize = builder->CreateMul(totalElements, elementSize);
+        
+        llvm::Function* mallocFunc = module->getFunction("malloc");
+        if (!mallocFunc) {
+            declareMalloc();
+            mallocFunc = module->getFunction("malloc");
+        }
+        
+        llvm::Value* newArrayPtr = builder->CreateCall(mallocFunc, {totalSize});
+        llvm::Value* typedNewArrayPtr = builder->CreateBitCast(newArrayPtr, llvm::PointerType::getUnqual(elementType));
+        
+        llvm::Value* newSizeDouble = builder->CreateUIToFP(newSize, elementType);
+        builder->CreateStore(newSizeDouble, typedNewArrayPtr);
+        
+        llvm::Value* newDataPtr = builder->CreateInBoundsGEP(elementType, typedNewArrayPtr,
+            llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), 1));
+        
+        llvm::BasicBlock* loopBlock = llvm::BasicBlock::Create(*context, "copy_loop", currentFunction);
+        llvm::BasicBlock* loopEndBlock = llvm::BasicBlock::Create(*context, "copy_end", currentFunction);
+        
+        llvm::AllocaInst* indexVar = builder->CreateAlloca(llvm::Type::getInt64Ty(*context), nullptr, "copy_index");
+        builder->CreateStore(llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), 0), indexVar);
+        
+        builder->CreateBr(loopBlock);
+        
+        builder->SetInsertPoint(loopBlock);
+        llvm::Value* currentIndex = builder->CreateLoad(llvm::Type::getInt64Ty(*context), indexVar);
+        llvm::Value* condition = builder->CreateICmpULT(currentIndex, currentSizeInt);
+        
+        llvm::BasicBlock* loopBodyBlock = llvm::BasicBlock::Create(*context, "copy_body", currentFunction);
+        builder->CreateCondBr(condition, loopBodyBlock, loopEndBlock);
+        
+        builder->SetInsertPoint(loopBodyBlock);
+        llvm::Value* srcPtr = builder->CreateInBoundsGEP(elementType, arrayPtr, currentIndex);
+        llvm::Value* dstPtr = builder->CreateInBoundsGEP(elementType, newDataPtr, currentIndex);
+        llvm::Value* element = builder->CreateLoad(elementType, srcPtr);
+        builder->CreateStore(element, dstPtr);
+        
+        llvm::Value* nextIndex = builder->CreateAdd(currentIndex,
+            llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), 1));
+        builder->CreateStore(nextIndex, indexVar);
+        builder->CreateBr(loopBlock);
+        
+        builder->SetInsertPoint(loopEndBlock);
+        llvm::Value* lastElementPtr = builder->CreateInBoundsGEP(elementType, newDataPtr, currentSizeInt);
+        builder->CreateStore(newValue, lastElementPtr);
+        
+        valueStack.push(newDataPtr);
+        return;
     } else if (node->name == "print") {
         // Handle print specially
         if (node->arguments.empty()) {
@@ -2012,6 +2136,88 @@ void CodeGenerator::visit(ExpressionStatement* node) {
     if (!valueStack.empty()) {
         valueStack.pop();  // Discard the result
     }
+}
+
+void CodeGenerator::visit(ArrayLiteral* node) {
+    llvm::Type* elementType = llvm::Type::getDoubleTy(*context);
+    
+    // Ensure malloc is available
+    llvm::Function* mallocFunc = module->getFunction("malloc");
+    if (!mallocFunc) {
+        declareMalloc();
+        mallocFunc = module->getFunction("malloc");
+    }
+    
+    // Calculate memory size: (elements + 1 for size metadata) * sizeof(double)
+    size_t elementCount = node->elements.size();
+    llvm::Value* totalSize = getInt64((elementCount + 1) * 8);
+    
+    llvm::Value* arrayPtr = builder->CreateCall(mallocFunc, {totalSize});
+    llvm::Value* typedArrayPtr = builder->CreateBitCast(arrayPtr, llvm::PointerType::getUnqual(elementType));
+    
+    llvm::Value* arraySizeDouble = llvm::ConstantFP::get(elementType, static_cast<double>(elementCount));
+    builder->CreateStore(arraySizeDouble, typedArrayPtr);
+    
+    llvm::Value* dataPtr = builder->CreateInBoundsGEP(elementType, typedArrayPtr, getInt64(1));
+    
+    for (size_t i = 0; i < node->elements.size(); ++i) {
+        node->elements[i]->accept(this);
+        llvm::Value* value = valueStack.top();
+        valueStack.pop();
+        
+        value = convertToDouble(value);
+        
+        llvm::Value* elementPtr = builder->CreateInBoundsGEP(elementType, dataPtr, getInt64(i));
+        builder->CreateStore(value, elementPtr);
+    }
+    
+    valueStack.push(dataPtr);
+}
+
+void CodeGenerator::visit(IndexExpression* node) {
+    node->array->accept(this);
+    llvm::Value* arrayPtr = valueStack.top();
+    valueStack.pop();
+    
+    node->index->accept(this);
+    llvm::Value* index = valueStack.top();
+    valueStack.pop();
+    
+    if (!index->getType()->isIntegerTy()) {
+        index = builder->CreateFPToUI(index, llvm::Type::getInt64Ty(*context));
+    }
+    
+    llvm::Type* elementType = llvm::Type::getDoubleTy(*context);
+    llvm::Value* elementPtr = builder->CreateInBoundsGEP(elementType, arrayPtr, index);
+    llvm::Value* value = builder->CreateLoad(elementType, elementPtr);
+    
+    valueStack.push(value);
+}
+
+void CodeGenerator::visit(IndexAssignmentExpression* node) {
+    node->array->accept(this);
+    llvm::Value* arrayPtr = valueStack.top();
+    valueStack.pop();
+    
+    node->index->accept(this);
+    llvm::Value* index = valueStack.top();
+    valueStack.pop();
+    
+    node->value->accept(this);
+    llvm::Value* value = valueStack.top();
+    valueStack.pop();
+    
+    if (!index->getType()->isIntegerTy()) {
+        index = builder->CreateFPToUI(index, llvm::Type::getInt64Ty(*context));
+    }
+    
+    llvm::Type* elementType = llvm::Type::getDoubleTy(*context);
+    value = convertToDouble(value);
+    
+    llvm::Value* elementPtr = builder->CreateInBoundsGEP(elementType, arrayPtr, index);
+    builder->CreateStore(value, elementPtr);
+
+    valueStack.push(value);
 }
 
 void CodeGenerator::visit(VariableDeclaration* node) {

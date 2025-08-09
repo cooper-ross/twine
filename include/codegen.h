@@ -78,6 +78,9 @@ private:
     llvm::Value* convertToBool(llvm::Value* value);
     llvm::Value* convertToString(llvm::Value* value);
     
+    // LLVM helpers
+    llvm::Value* getInt64(int64_t value);
+    
     // String concatenation helper
     llvm::Value* createStringConcatenation(llvm::Value* left, llvm::Value* right);
     
@@ -102,7 +105,10 @@ public:
     void visit(BinaryExpression* node) override;
     void visit(UnaryExpression* node) override;
     void visit(AssignmentExpression* node) override;
+    void visit(IndexAssignmentExpression* node) override;
     void visit(CallExpression* node) override;
+    void visit(ArrayLiteral* node) override;
+    void visit(IndexExpression* node) override;
     void visit(ExpressionStatement* node) override;
     void visit(VariableDeclaration* node) override;
     void visit(BlockStatement* node) override;
