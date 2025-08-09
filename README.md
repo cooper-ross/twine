@@ -252,20 +252,20 @@ let result = (10 + 5) * 2 - 3; // 27
 let age = 18;
 
 if (age >= 18) {
-    printl("You are an adult");
+    print("You are an adult");
 } else {
-    printl("You are a minor");
+    print("You are a minor");
 }
 
 // Nested if/else
 let score = 85;
 if (score >= 90) {
-    printl("Grade: A");
+    print("Grade: A");
 } else {
     if (score >= 80) {
-        printl("Grade: B");
+        print("Grade: B");
     } else {
-        printl("Grade: C");
+        print("Grade: C");
     }
 }
 ```
@@ -275,13 +275,13 @@ if (score >= 90) {
 ```javascript
 let i = 0;
 while (i < 5) {
-    printl(i);
+    print(i);
     i = i + 1;
 }
 
 // Infinite loop (be careful!)
 while (true) {
-    printl("Press Ctrl+C to stop");
+    print("Press Ctrl+C to stop");
 }
 ```
 
@@ -290,13 +290,13 @@ while (true) {
 ```javascript
 // C-style for loop
 for (let i = 0; i < 10; i = i + 1) {
-    printl(i);
+    print(i);
 }
 
 // Nested loops
 for (let i = 0; i < 3; i = i + 1) {
     for (let j = 0; j < 3; j = j + 1) {
-        printl(i * 3 + j);
+        print(i * 3 + j);
     }
 }
 ```
