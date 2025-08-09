@@ -3,8 +3,6 @@ print("How many simulations would you like to run?");
 
 let sims = int(input());
 
-print("");
-print("=== Running Simulation ===");
 let switchWins = 0;
 let switchLosses = 0;
 let stayWins = 0;

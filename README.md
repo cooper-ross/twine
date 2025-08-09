@@ -32,26 +32,29 @@ A high-performance compiler for a dynamic language, built in modern C++17 with d
   - `if`/`else` statements
   - `while` loops
   - `for` loops with C-style syntax
-  - **Built-in Functions**:
+- **Built-in Functions**:
   - `print(value)`: Print value with newline
   - `input()`: Read input from user
   - `str(number)`: Convert number to string
   - `num(string)`: Convert string to number  
   - `int(string)`: Convert string to integer
-  - `len(string/array)`: Return the length of a string or array
+- **String Functions**:
+  - `len(string)`: Return the length of a string
   - `upper(string)`: Convert string to uppercase
   - `lower(string)`: Convert string to lowercase
   - `includes(haystack, needle)`: Check if haystack contains needle (returns 1.0 or 0.0)
   - `replace(haystack, old, new)`: Replace first occurrence of old with new in haystack
+- **Array Functions**:
+  - `len(array)`: Return the length of an array
   - `append(array, value)`: Append value to array and return new array
-  - **Math Functions**:
-    - `abs(x)`: Absolute value
-    - `round(x, [decimals])`: Round to nearest integer or decimal place
-    - `min(a, b, ...)`: Find minimum value
-    - `max(a, b, ...)`: Find maximum value
-    - `pow(x, y)`: Raise x to power of y
-    - `sqrt(x)`: Calculate square root
-    - `random()`: Generate random number from 0 to 1
+- **Math Functions**:
+  - `abs(x)`: Absolute value
+  - `round(x, [decimals])`: Round to nearest integer or decimal place
+  - `min(a, b, ...)`: Find minimum value
+  - `max(a, b, ...)`: Find maximum value
+  - `pow(x, y)`: Raise x to power of y
+  - `sqrt(x)`: Calculate square root
+  - `random()`: Generate random number from 0 to 1
 - **Comments**:
   - Single-line: `// comment`
   - Multi-line: `/* comment */`
@@ -451,19 +454,13 @@ enum class TokenType {
 
 ### Adding New Features
 
-1. **New Operators**:
-   - Add token type in `lexer.h`
-   - Add lexing logic in `lexer.cpp`
-   - Add parsing logic in `parser.cpp`
-   - Add codegen logic in `codegen.cpp`
-
-2. **New Statement Types**:
+1. **New Statement Types**:
    - Define AST node in `ast.h`
    - Implement accept method in `ast.cpp`
    - Add parsing in `parser.cpp`
    - Add visitor method in `codegen.cpp`
 
-3. **Built-in Functions**:
+2. **Built-in Functions**:
    - Add declaration in `declareBuiltinFunctions()`
    - Add special handling in `visit(CallExpression*)`
 
