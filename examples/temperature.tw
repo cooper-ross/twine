@@ -7,4 +7,3 @@ let fahrenheit = (celsius * 9 / 5) + 32; // Conversion formula
 print("");
 print("=== Conversion Result ===");
 print(str(celsius) + " degrees in Celsius is " + str(fahrenheit) + " degrees Fahrenheit");
-

@@ -1804,7 +1804,7 @@ void CodeGenerator::visit(CallExpression* node) {
         valueStack.push(resultBuffer);
         return;
     } else if (node->name == "includes") {
-        // Handle includes specially - checks if haystack contains needle
+        // Handle includes specially for both strings and arrays
         if (node->arguments.size() != 2) {
             throw std::runtime_error("includes() expects exactly 2 arguments");
         }
@@ -1817,25 +1817,66 @@ void CodeGenerator::visit(CallExpression* node) {
         llvm::Value* needle = valueStack.top();
         valueStack.pop();
         
-        if (!haystack->getType()->isPointerTy() || !needle->getType()->isPointerTy()) {
-            throw std::runtime_error("includes() expects two string arguments");
+        if (!haystack->getType()->isPointerTy()) {
+            throw std::runtime_error("includes() expects first argument to be a string or array");
         }
 
-        llvm::Function* strstrFunc = module->getFunction("strstr");
-        if (!strstrFunc) {
-            declareStrstr();
-            strstrFunc = module->getFunction("strstr");
+        if (needle->getType()->isPointerTy()) {
+            // String search using strstr
+            llvm::Function* strstrFunc = module->getFunction("strstr");
+            if (!strstrFunc) {
+                declareStrstr();
+                strstrFunc = module->getFunction("strstr");
+            }
+            
+            llvm::Value* result = builder->CreateCall(strstrFunc, {haystack, needle});
+            llvm::Value* nullPtr = llvm::ConstantPointerNull::get(llvm::PointerType::getUnqual(*context));
+            llvm::Value* found = builder->CreateICmpNE(result, nullPtr);
+            llvm::Value* doubleResult = builder->CreateUIToFP(found, llvm::Type::getDoubleTy(*context));
+            valueStack.push(doubleResult);
+        } else {
+            // Array search
+            llvm::Type* doubleType = llvm::Type::getDoubleTy(*context);
+            llvm::Type* int64Type = llvm::Type::getInt64Ty(*context);
+            needle = convertToDouble(needle);
+            
+            llvm::Value* sizePtr = builder->CreateInBoundsGEP(doubleType, haystack, getInt64(-1));
+            llvm::Value* arraySize = builder->CreateLoad(doubleType, sizePtr);
+            llvm::Value* sizeInt = builder->CreateFPToUI(arraySize, int64Type);
+            
+            llvm::BasicBlock* loopBlock = llvm::BasicBlock::Create(*context, "loop", currentFunction);
+            llvm::BasicBlock* exitBlock = llvm::BasicBlock::Create(*context, "exit", currentFunction);
+            
+            llvm::AllocaInst* indexVar = createEntryBlockAlloca(currentFunction, "index", int64Type);
+            llvm::Value* zero = llvm::ConstantInt::get(int64Type, 0);
+            llvm::Value* one = llvm::ConstantInt::get(int64Type, 1);
+            builder->CreateStore(zero, indexVar);
+            builder->CreateBr(loopBlock);
+            
+            builder->SetInsertPoint(loopBlock);
+            llvm::Value* index = builder->CreateLoad(int64Type, indexVar);
+            llvm::Value* inBounds = builder->CreateICmpULT(index, sizeInt);
+            
+            // Early exit if out of bounds
+            llvm::BasicBlock* bodyBlock = llvm::BasicBlock::Create(*context, "body", currentFunction);
+            builder->CreateCondBr(inBounds, bodyBlock, exitBlock);
+            
+            builder->SetInsertPoint(bodyBlock);
+            llvm::Value* elementPtr = builder->CreateInBoundsGEP(doubleType, haystack, index);
+            llvm::Value* element = builder->CreateLoad(doubleType, elementPtr);
+            llvm::Value* isEqual = builder->CreateFCmpOEQ(element, needle);
+            
+            llvm::Value* nextIndex = builder->CreateAdd(index, one);
+            builder->CreateStore(nextIndex, indexVar);
+            builder->CreateCondBr(isEqual, exitBlock, loopBlock);
+            
+            builder->SetInsertPoint(exitBlock);
+            llvm::PHINode* result = builder->CreatePHI(doubleType, 2, "result");
+            result->addIncoming(llvm::ConstantFP::get(doubleType, 0.0), loopBlock);   // not found
+            result->addIncoming(llvm::ConstantFP::get(doubleType, 1.0), bodyBlock);   // found
+            
+            valueStack.push(result);
         }
-        
-        llvm::Value* result = builder->CreateCall(strstrFunc, {haystack, needle});
-        
-        // strstr returns null if not found, non-null if found
-        llvm::Value* nullPtr = llvm::ConstantPointerNull::get(llvm::PointerType::getUnqual(*context));
-        llvm::Value* found = builder->CreateICmpNE(result, nullPtr);
-        
-        // // Convert boolean to double for consistency
-        llvm::Value* doubleResult = builder->CreateUIToFP(found, llvm::Type::getDoubleTy(*context));
-        valueStack.push(doubleResult);
         return;
     } else if (node->name == "replace") {
         // Handle replace specially - replaces first occurrence of old

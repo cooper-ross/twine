@@ -24,4 +24,3 @@ let b = 4;
 let hypotenuse = sqrt(pow(a, 2) + pow(b, 2));
 print("Hypotenuse of right triangle with sides 3 and 4:");
 print(hypotenuse); // 5
-

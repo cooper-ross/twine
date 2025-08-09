@@ -47,6 +47,7 @@ A high-performance compiler for a dynamic language, built in modern C++17 with d
 - **Array Functions**:
   - `len(array)`: Return the length of an array
   - `append(array, value)`: Append value to array and return new array
+  - `includes(haystack, needle)`: Check if haystack array contains needle (returns 1.0 or 0.0)
 - **Math Functions**:
   - `abs(x)`: Absolute value
   - `round(x, [decimals])`: Round to nearest integer or decimal place
