@@ -471,10 +471,11 @@ This project is provided as-is for all purposes, and was really just for me - it
 
 ## Acknowledgments
 
-* **The LLVM Project** – For providing excellent compiler infrastructure and tools.
-* ***The Dragon Book*** – For foundational compiler theory and education.
-* [Wisp by Adam McDaniel](https://github.com/adam-mcdaniel/wisp) – A minimal Lisp-like language built with LLVM.
-* [LLVM IR with the C++ API – Tutorial by Mukul Rathi](https://mukulrathi.com/create-your-own-programming-language/llvm-ir-cpp-api-tutorial)
-* [“Hello, LLVM” – Tutorial by James Hamilton](https://jameshamilton.eu/programming/llvm-hello-world)
-* [Awesome LLVM](https://github.com/learn-llvm/awesome-llvm) – A curated list of useful LLVM resources.
-* [Jesse Squires' Blog](https://www.jessesquires.com/blog/2020/12/28/resources-for-learning-about-compilers-and-llvm) – A great roundup of compiler and LLVM learning materials.
+* [The LLVM Project](https://llvm.org) - For providing excellent compiler infrastructure and tools.
+* [The Dragon Book](https://faculty.sist.shanghaitech.edu.cn/faculty/songfu/cav/Dragon-book.pdf) - For foundational compiler theory, and lots on lexing and parsing.
+* [Wisp by Adam McDaniel](https://github.com/adam-mcdaniel/wisp) - A minimal Lisp-like language built with LLVM.
+* [LLVM IR with the C++ API](https://mukulrathi.com/create-your-own-programming-language/llvm-ir-cpp-api-tutorial) - Tutorial by Mukul Rathi
+* [“Hello, LLVM”](https://jameshamilton.eu/programming/llvm-hello-world) - Tutorial by James Hamilton
+* [Awesome LLVM](https://github.com/learn-llvm/awesome-llvm) - A curated list of useful LLVM resources.
+* [Jesse Squires' Blog](https://www.jessesquires.com/blog/2020/12/28/resources-for-learning-about-compilers-and-llvm) - A great roundup of compiler and LLVM learning materials.
+* [Building an Optimizing Compiler](https://turbo51.com/download/Building-an-Optimizing-Compile-Book-Preview.pdf) - Old, but still very good, helpful with high level design.
