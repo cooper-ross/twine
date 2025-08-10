@@ -1,0 +1,85 @@
+// Comprehensive test of user-defined functions in Twine
+
+print("=== User-Defined Functions Demo ===");
+print("");
+
+// Simple function with no parameters
+function getAnswer() {
+    return 42;
+}
+
+// Function with parameters
+function add(a, b) {
+    return a + b;
+}
+
+// Function with multiple parameters and built-in function calls
+function pythagorean(a, b) {
+    return sqrt(a * a + b * b);
+}
+
+// Recursive function
+function factorial(n) {
+    if (n <= 1) {
+        return 1;
+    } else {
+        return n * factorial(n - 1);
+    }
+}
+
+// Mutual recursion
+function isEven(n) {
+    if (n == 0) {
+        return 1;
+    } else {
+        return isOdd(n - 1);
+    }
+}
+
+function isOdd(n) {
+    if (n == 0) {
+        return 0;
+    } else {
+        return isEven(n - 1);
+    }
+}
+
+// Function with loops and local variables
+function sumRange(start, end) {
+    let total = 0;
+    for (let i = start; i <= end; i = i + 1) {
+        total = total + i;
+    }
+    return total;
+}
+
+// Testing the functions
+print("1. Simple function:");
+print("   getAnswer() = " + str(getAnswer()));
+
+print("");
+print("2. Function with parameters:");
+print("   add(15, 27) = " + str(add(15, 27)));
+
+print("");
+print("3. Function using built-ins:");
+print("   pythagorean(3, 4) = " + str(pythagorean(3, 4)));
+
+print("");
+print("4. Recursive function:");
+print("   factorial(5) = " + str(factorial(5)));
+
+print("");
+print("5. Mutual recursion:");
+print("   isEven(8) = " + str(isEven(8)));
+print("   isOdd(8) = " + str(isOdd(8)));
+print("   isEven(7) = " + str(isEven(7)));
+print("   isOdd(7) = " + str(isOdd(7)));
+
+print("");
+print("6. Function with loops:");
+print("   sumRange(1, 10) = " + str(sumRange(1, 10)));
+
+print("");
+print("7. Nested function calls:");
+print("   add(factorial(3), pythagorean(3, 4)) = " + str(add(factorial(3), pythagorean(3, 4))));

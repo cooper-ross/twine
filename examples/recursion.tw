@@ -1,0 +1,52 @@
+// Test recursive functions
+function factorial(n) {
+    if (n <= 1) {
+        return 1;
+    } else {
+        return n * factorial(n - 1);
+    }
+}
+
+function fibonacci(n) {
+    if (n <= 1) {
+        return n;
+    } else {
+        return fibonacci(n - 1) + fibonacci(n - 2);
+    }
+}
+
+// Test factorial
+print("Factorial of 5 = " + str(factorial(5)));
+print("Factorial of 0 = " + str(factorial(0)));
+
+// Test fibonacci
+print("Fibonacci of 6 = " + str(fibonacci(6)));
+print("Fibonacci of 10 = " + str(fibonacci(10)));
+
+// Test mutual recursion
+function isEven(n) {
+    if (n == 0) {
+        return 1;
+    } else {
+        return isOdd(n - 1);
+    }
+}
+
+function isOdd(n) {
+    if (n == 0) {
+        return 0;
+    } else {
+        return isEven(n - 1);
+    }
+}
+
+print("Is 6 even? " + str(isEven(6)));
+print("Is 7 even? " + str(isEven(7)));
+
+function test(number) {
+    return str(number * 2) + "test";
+}
+
+let a = test(3);
+print(len(a));
+print(test(3));

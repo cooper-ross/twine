@@ -84,6 +84,16 @@ private:
     // String concatenation helper
     llvm::Value* createStringConcatenation(llvm::Value* left, llvm::Value* right);
     
+    // Runtime value boxing/unboxing for dynamic typing
+    llvm::Value* boxValue(llvm::Value* value);
+    llvm::Value* unboxValue(llvm::Value* boxedValue, llvm::Type* expectedType);
+    llvm::Value* unboxPointerToDouble(llvm::Value* ptrValue);
+    llvm::Value* isStringPointer(llvm::Value* ptrValue, bool allowEmptyStrings);
+    
+    // LLVM helper utilities
+    llvm::Value* createFormatString(const std::string& format);
+    llvm::Value* getInt32(int32_t value);
+    
 public:
     CodeGenerator(const std::string& moduleName);
     ~CodeGenerator();

@@ -733,19 +733,45 @@ llvm::Function* CodeGenerator::declarePuts() {
     return putsFunc;
 }
 
+llvm::Value* CodeGenerator::createFormatString(const std::string& format) {
+    llvm::GlobalVariable* formatVar = builder->CreateGlobalString(format);
+    std::vector<llvm::Value*> indices = {getInt32(0), getInt32(0)};
+    return builder->CreateInBoundsGEP(formatVar->getValueType(), formatVar, indices);
+}
+
+llvm::Value* CodeGenerator::getInt32(int32_t value) {
+    return llvm::ConstantInt::get(*context, llvm::APInt(32, value));
+}
+
+// Tells apart strings from boxed numbers by checking first byte
+llvm::Value* CodeGenerator::isStringPointer(llvm::Value* ptrValue, bool allowEmptyStrings) {
+    llvm::Value* firstByte = builder->CreateLoad(llvm::Type::getInt8Ty(*context), 
+        builder->CreateBitCast(ptrValue, llvm::PointerType::getUnqual(llvm::Type::getInt8Ty(*context))));
+    
+    static const int32_t PRINTABLE_MIN = 32;
+    static const int32_t PRINTABLE_MAX = 126;
+    
+    llvm::Value* isPrintable = builder->CreateAnd(
+        builder->CreateICmpUGE(firstByte, llvm::ConstantInt::get(llvm::Type::getInt8Ty(*context), PRINTABLE_MIN)),
+        builder->CreateICmpULE(firstByte, llvm::ConstantInt::get(llvm::Type::getInt8Ty(*context), PRINTABLE_MAX))
+    );
+    
+    if (allowEmptyStrings) {
+        llvm::Value* isNullTerminator = builder->CreateICmpEQ(firstByte, 
+            llvm::ConstantInt::get(llvm::Type::getInt8Ty(*context), 0));
+        return builder->CreateOr(isNullTerminator, isPrintable);
+    }
+    
+    return isPrintable;
+}
+
 llvm::Value* CodeGenerator::convertToDouble(llvm::Value* value) {
     if (value->getType()->isDoubleTy()) {
         return value;
     } else if (value->getType()->isIntegerTy()) {
         return builder->CreateSIToFP(value, llvm::Type::getDoubleTy(*context), "cast");
     } else if (value->getType()->isPointerTy()) {
-        // String to number conversion
-        llvm::Function* atofFunc = module->getFunction("atof");
-        if (!atofFunc) {
-            declareAtof();
-            atofFunc = module->getFunction("atof");
-        }
-        return builder->CreateCall(atofFunc, {value});
+        return unboxValue(value, llvm::Type::getDoubleTy(*context));
     }
     return value;
 }
@@ -761,6 +787,84 @@ llvm::Value* CodeGenerator::convertToInt(llvm::Value* value) {
 
 llvm::Value* CodeGenerator::getInt64(int64_t value) {
     return llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), value);
+}
+
+llvm::Value* CodeGenerator::boxValue(llvm::Value* value) {
+    if (!value) return llvm::ConstantPointerNull::get(llvm::PointerType::getUnqual(*context));
+    
+    if (value->getType()->isPointerTy()) {
+        // Already a pointer, return as-is
+        return value;
+    } else if (value->getType()->isDoubleTy()) {
+        // Box double by allocating memory and storing the value
+        llvm::Function* mallocFunc = module->getFunction("malloc");
+        if (!mallocFunc) {
+            declareMalloc();
+            mallocFunc = module->getFunction("malloc");
+        }
+        
+        llvm::Value* size = llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), 8); // sizeof(double)
+        llvm::Value* ptr = builder->CreateCall(mallocFunc, {size});
+        llvm::Value* doublePtr = builder->CreateBitCast(ptr, llvm::PointerType::getUnqual(llvm::Type::getDoubleTy(*context)));
+        builder->CreateStore(value, doublePtr);
+        return builder->CreateBitCast(doublePtr, llvm::PointerType::getUnqual(*context));
+    } else {
+        llvm::Value* doubleVal = convertToDouble(value);
+        return boxValue(doubleVal);
+    }
+}
+
+// Converts pointer to double: strings via atof(), boxed numbers via direct load
+llvm::Value* CodeGenerator::unboxPointerToDouble(llvm::Value* ptrValue) {
+    llvm::Value* isString = isStringPointer(ptrValue, false);
+    
+    llvm::BasicBlock* stringBlock = llvm::BasicBlock::Create(*context, "string_to_double", currentFunction);
+    llvm::BasicBlock* boxedBlock = llvm::BasicBlock::Create(*context, "unbox_double", currentFunction);
+    llvm::BasicBlock* mergeBlock = llvm::BasicBlock::Create(*context, "unbox_merge", currentFunction);
+    
+    builder->CreateCondBr(isString, stringBlock, boxedBlock);
+    
+    builder->SetInsertPoint(stringBlock);
+    llvm::Function* atofFunc = module->getFunction("atof");
+    if (!atofFunc) {
+        declareAtof();
+        atofFunc = module->getFunction("atof");
+    }
+    llvm::Value* stringResult = builder->CreateCall(atofFunc, {ptrValue});
+    builder->CreateBr(mergeBlock);
+    
+    builder->SetInsertPoint(boxedBlock);
+    llvm::Value* doublePtr = builder->CreateBitCast(ptrValue, llvm::PointerType::getUnqual(llvm::Type::getDoubleTy(*context)));
+    llvm::Value* boxedResult = builder->CreateLoad(llvm::Type::getDoubleTy(*context), doublePtr);
+    builder->CreateBr(mergeBlock);
+    
+    builder->SetInsertPoint(mergeBlock);
+    llvm::PHINode* result = builder->CreatePHI(llvm::Type::getDoubleTy(*context), 2);
+    result->addIncoming(stringResult, stringBlock);
+    result->addIncoming(boxedResult, boxedBlock);
+    
+    return result;
+}
+
+llvm::Value* CodeGenerator::unboxValue(llvm::Value* boxedValue, llvm::Type* expectedType) {
+    if (!boxedValue || !expectedType) {
+        return llvm::ConstantFP::get(*context, llvm::APFloat(0.0));
+    }
+    
+    if (expectedType->isDoubleTy()) {
+        if (boxedValue->getType()->isPointerTy()) {
+            return unboxPointerToDouble(boxedValue);
+        } else if (boxedValue->getType()->isIntegerTy()) {
+            return builder->CreateSIToFP(boxedValue, llvm::Type::getDoubleTy(*context), "cast");
+        }
+        return boxedValue;
+    } else if (expectedType->isPointerTy()) {
+        return boxedValue;
+    } else if (expectedType->isIntegerTy()) {
+        llvm::Value* doubleVal = unboxValue(boxedValue, llvm::Type::getDoubleTy(*context));
+        return builder->CreateFPToSI(doubleVal, expectedType);
+    }
+    return boxedValue;
 }
 
 llvm::Value* CodeGenerator::convertToBool(llvm::Value* value) {
@@ -796,13 +900,9 @@ bool CodeGenerator::generate(Program* program) {
         
         currentFunction = mainFunc;
         
-        // Visit the program
         program->accept(this);
-        
-        // Return 0 from main
         builder->CreateRet(llvm::ConstantInt::get(*context, llvm::APInt(32, 0)));
         
-        // Verify the module
         std::string error;
         llvm::raw_string_ostream errorStream(error);
         if (llvm::verifyModule(*module, &errorStream)) {
@@ -834,9 +934,31 @@ bool CodeGenerator::writeIRToFile(const std::string& filename) {
     return true;
 }
 
-// Visitor implementations
-
 void CodeGenerator::visit(Program* node) {
+    for (auto& stmt : node->statements) {
+        if (auto* funcDecl = dynamic_cast<FunctionDeclaration*>(stmt.get())) {
+            std::vector<llvm::Type*> paramTypes;
+            for (size_t i = 0; i < funcDecl->parameters.size(); i++) {
+                paramTypes.push_back(llvm::Type::getDoubleTy(*context));
+            }
+            
+            llvm::FunctionType* funcType = llvm::FunctionType::get(
+                llvm::PointerType::getUnqual(*context),
+                paramTypes,
+                false
+            );
+            
+            llvm::Function* function = llvm::Function::Create(
+                funcType,
+                llvm::Function::InternalLinkage,
+                funcDecl->name,
+                module.get()
+            );
+            
+            functions[funcDecl->name] = function;
+        }
+    }
+    
     for (auto& stmt : node->statements) {
         stmt->accept(this);
     }
@@ -847,24 +969,18 @@ void CodeGenerator::visit(NumberLiteral* node) {
 }
 
 void CodeGenerator::visit(StringLiteral* node) {
-    // Create a global string constant
     llvm::Constant* strConstant = llvm::ConstantDataArray::getString(*context, node->value);
     
     llvm::GlobalVariable* globalStr = new llvm::GlobalVariable(
         *module,
         strConstant->getType(),
-        true,  // isConstant
+        true,
         llvm::GlobalValue::PrivateLinkage,
         strConstant,
         ".str"
     );
     
-    // Get pointer to the string
-    std::vector<llvm::Value*> indices = {
-        llvm::ConstantInt::get(*context, llvm::APInt(32, 0)),
-        llvm::ConstantInt::get(*context, llvm::APInt(32, 0))
-    };
-    
+    std::vector<llvm::Value*> indices = {getInt32(0), getInt32(0)};
     llvm::Value* strPtr = builder->CreateInBoundsGEP(
         globalStr->getValueType(),
         globalStr,
@@ -2087,14 +2203,9 @@ void CodeGenerator::visit(CallExpression* node) {
         valueStack.push(newDataPtr);
         return;
     } else if (node->name == "print") {
-        // Handle print specially
         if (node->arguments.empty()) {
-            // Print newline only
             llvm::GlobalVariable* newline = builder->CreateGlobalString("\n");
-            std::vector<llvm::Value*> indices = {
-                llvm::ConstantInt::get(*context, llvm::APInt(32, 0)),
-                llvm::ConstantInt::get(*context, llvm::APInt(32, 0))
-            };
+            std::vector<llvm::Value*> indices = {getInt32(0), getInt32(0)};
             llvm::Value* newlinePtr = builder->CreateInBoundsGEP(
                 newline->getValueType(),
                 newline,
@@ -2102,57 +2213,40 @@ void CodeGenerator::visit(CallExpression* node) {
             );
             builder->CreateCall(functions["printf"], {newlinePtr});
         } else {
-            // Evaluate arguments
             for (auto& arg : node->arguments) {
                 arg->accept(this);
                 llvm::Value* value = valueStack.top();
                 valueStack.pop();
                 
                 if (value->getType()->isPointerTy()) {
-                    // String - print with %s
-                    llvm::GlobalVariable* format = builder->CreateGlobalString("%s\n");
-                    std::vector<llvm::Value*> indices = {
-                        llvm::ConstantInt::get(*context, llvm::APInt(32, 0)),
-                        llvm::ConstantInt::get(*context, llvm::APInt(32, 0))
-                    };
-                    llvm::Value* formatPtr = builder->CreateInBoundsGEP(
-                        format->getValueType(),
-                        format,
-                        indices
-                    );
-                    builder->CreateCall(functions["printf"], {formatPtr, value});
+                    // Dynamic dispatch, strings vs boxed numbers
+                    llvm::Value* isString = isStringPointer(value, true);
+                    
+                    llvm::BasicBlock* stringBlock = llvm::BasicBlock::Create(*context, "print_string", currentFunction);
+                    llvm::BasicBlock* numberBlock = llvm::BasicBlock::Create(*context, "print_number", currentFunction);
+                    llvm::BasicBlock* mergeBlock = llvm::BasicBlock::Create(*context, "print_merge", currentFunction);
+                    
+                    builder->CreateCondBr(isString, stringBlock, numberBlock);
+                    
+                    builder->SetInsertPoint(stringBlock);
+                    builder->CreateCall(functions["printf"], {createFormatString("%s\n"), value});
+                    builder->CreateBr(mergeBlock);
+                    
+                    builder->SetInsertPoint(numberBlock);
+                    llvm::Value* doubleVal = unboxValue(value, llvm::Type::getDoubleTy(*context));
+                    builder->CreateCall(functions["printf"], {createFormatString("%f\n"), doubleVal});
+                    builder->CreateBr(mergeBlock);
+                    
+                    builder->SetInsertPoint(mergeBlock);
                 } else if (value->getType()->isDoubleTy()) {
-                    // Double - print with %f
-                    llvm::GlobalVariable* format = builder->CreateGlobalString("%f\n");
-                    std::vector<llvm::Value*> indices = {
-                        llvm::ConstantInt::get(*context, llvm::APInt(32, 0)),
-                        llvm::ConstantInt::get(*context, llvm::APInt(32, 0))
-                    };
-                    llvm::Value* formatPtr = builder->CreateInBoundsGEP(
-                        format->getValueType(),
-                        format,
-                        indices
-                    );
-                    builder->CreateCall(functions["printf"], {formatPtr, value});
+                    builder->CreateCall(functions["printf"], {createFormatString("%f\n"), value});
                 } else if (value->getType()->isIntegerTy()) {
-                    // Integer - print with %d
-                    llvm::GlobalVariable* format = builder->CreateGlobalString("%d\n");
-                    std::vector<llvm::Value*> indices = {
-                        llvm::ConstantInt::get(*context, llvm::APInt(32, 0)),
-                        llvm::ConstantInt::get(*context, llvm::APInt(32, 0))
-                    };
-                    llvm::Value* formatPtr = builder->CreateInBoundsGEP(
-                        format->getValueType(),
-                        format,
-                        indices
-                    );
-                    builder->CreateCall(functions["printf"], {formatPtr, value});
+                    builder->CreateCall(functions["printf"], {createFormatString("%d\n"), value});
                 }
             }
         }
         valueStack.push(llvm::ConstantInt::get(*context, llvm::APInt(32, 0)));
     } else {
-        // Regular function call
         auto it = functions.find(node->name);
         if (it == functions.end()) {
             throw std::runtime_error("Undefined function: " + node->name);
@@ -2163,8 +2257,14 @@ void CodeGenerator::visit(CallExpression* node) {
         
         for (auto& arg : node->arguments) {
             arg->accept(this);
-            args.push_back(valueStack.top());
+            llvm::Value* argValue = valueStack.top();
             valueStack.pop();
+            
+            if (func->getLinkage() == llvm::Function::InternalLinkage) {
+                argValue = convertToDouble(argValue);
+            }
+            
+            args.push_back(argValue);
         }
         
         llvm::Value* result = builder->CreateCall(func, args);
@@ -2175,14 +2275,13 @@ void CodeGenerator::visit(CallExpression* node) {
 void CodeGenerator::visit(ExpressionStatement* node) {
     node->expression->accept(this);
     if (!valueStack.empty()) {
-        valueStack.pop();  // Discard the result
+        valueStack.pop();
     }
 }
 
 void CodeGenerator::visit(ArrayLiteral* node) {
     llvm::Type* elementType = llvm::Type::getDoubleTy(*context);
     
-    // Ensure malloc is available
     llvm::Function* mallocFunc = module->getFunction("malloc");
     if (!mallocFunc) {
         declareMalloc();
@@ -2409,16 +2508,111 @@ void CodeGenerator::visit(ReturnStatement* node) {
         node->value->accept(this);
         llvm::Value* value = valueStack.top();
         valueStack.pop();
+        
+        llvm::Function* func = builder->GetInsertBlock()->getParent();
+        llvm::Type* returnType = func->getReturnType();
+        
+        if (returnType->isIntegerTy()) {
+            if (value->getType()->isDoubleTy()) {
+                value = builder->CreateFPToSI(value, llvm::Type::getInt32Ty(*context));
+            } else if (value->getType()->isPointerTy()) {
+                value = llvm::ConstantInt::get(*context, llvm::APInt(32, 0));
+            }
+        } else if (returnType->isPointerTy()) {
+            if (!value->getType()->isPointerTy()) {
+                value = boxValue(value);
+            }
+        }
+        
         builder->CreateRet(value);
     } else {
-        builder->CreateRetVoid();
+        llvm::Function* func = builder->GetInsertBlock()->getParent();
+        llvm::Type* returnType = func->getReturnType();
+        
+        if (returnType->isVoidTy()) {
+            builder->CreateRetVoid();
+        } else if (returnType->isIntegerTy()) {
+            builder->CreateRet(llvm::ConstantInt::get(*context, llvm::APInt(32, 0)));
+        } else if (returnType->isPointerTy()) {
+            builder->CreateRet(llvm::ConstantPointerNull::get(llvm::PointerType::getUnqual(*context)));
+        } else {
+            builder->CreateRetVoid();
+        }
     }
 }
 
 void CodeGenerator::visit(FunctionDeclaration* node) {
-    // For now, we're not implementing user-defined functions
-    // This would require more complex handling
-    throw std::runtime_error("User-defined functions not yet implemented");
+    auto it = functions.find(node->name);
+    llvm::Function* function;
+    
+    if (it != functions.end()) {
+        function = it->second;
+    } else {
+        std::vector<llvm::Type*> paramTypes;
+        for (size_t i = 0; i < node->parameters.size(); i++) {
+            paramTypes.push_back(llvm::Type::getDoubleTy(*context));
+        }
+        
+        llvm::FunctionType* funcType = llvm::FunctionType::get(
+            llvm::PointerType::getUnqual(*context),
+            paramTypes,
+            false
+        );
+        
+        function = llvm::Function::Create(
+            funcType,
+            llvm::Function::InternalLinkage,
+            node->name,
+            module.get()
+        );
+        
+        functions[node->name] = function;
+    }
+    
+    llvm::BasicBlock* entryBlock = llvm::BasicBlock::Create(*context, "entry", function);
+    
+    llvm::Function* previousFunction = currentFunction;
+    llvm::BasicBlock* previousBlock = builder->GetInsertBlock();
+    
+    currentFunction = function;
+    builder->SetInsertPoint(entryBlock);
+    
+    pushScope();
+    
+    auto argIt = function->arg_begin();
+    for (size_t i = 0; i < node->parameters.size(); i++, ++argIt) {
+        llvm::Argument* arg = &*argIt;
+        arg->setName(node->parameters[i]);
+        
+        // Create alloca for parameter and store the argument value (double)
+        llvm::AllocaInst* alloca = createEntryBlockAlloca(function, node->parameters[i], 
+                                                          llvm::Type::getDoubleTy(*context));
+        builder->CreateStore(arg, alloca);
+        symbolTables.back()[node->parameters[i]] = alloca;
+    }
+    
+    node->body->accept(this);
+     
+    if (!builder->GetInsertBlock()->getTerminator()) {
+        llvm::Value* nullValue = llvm::ConstantPointerNull::get(llvm::PointerType::getUnqual(*context));
+        builder->CreateRet(nullValue);
+    }
+
+    popScope();
+    
+    currentFunction = previousFunction;
+    if (previousBlock) {
+        builder->SetInsertPoint(previousBlock);
+    }
+    
+    std::string error;
+    llvm::raw_string_ostream errorStream(error);
+    if (llvm::verifyFunction(*function, &errorStream)) {
+        std::cerr << "Function verification failed for " << node->name << ": " << error << std::endl;
+        function->eraseFromParent();
+        functions.erase(node->name);
+        throw std::runtime_error("Function generation failed");
+    }
 }
 
 void CodeGenerator::declareStrlen() {
