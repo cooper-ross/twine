@@ -27,7 +27,7 @@ echo "Compiling Twine Compiler with g++..."
 LLVM_FLAGS=$(llvm-config --cxxflags --ldflags --system-libs --libs core support irreader codegen mc mcparser option target)
 
 # Compile with proper include path
-g++ -std=c++17 -Iinclude -o twc src/main.cpp src/lexer.cpp src/parser.cpp src/ast.cpp src/codegen.cpp $LLVM_FLAGS
+g++ -std=c++17 -Iinclude -o twine src/main.cpp src/lexer.cpp src/parser.cpp src/ast.cpp src/codegen.cpp $LLVM_FLAGS
 
 if [ $? -ne 0 ]; then
     echo "Build failed!"
@@ -35,9 +35,9 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "Build successful!"
-echo "Compiler is at: twc"
+echo "Compiler is at: twine"
 echo ""
 echo "Example usage:"
-echo "  ./twc examples/fibonacci.tw"
-echo "  ./twc examples/math.tw --verbose"
+echo "  ./twine examples/fibonacci.tw"
+echo "  ./twine examples/math.tw --verbose"
 echo ""

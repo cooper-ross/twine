@@ -1,6 +1,6 @@
 # Twine: Dynamic Language Compiler with LLVM
 
-A high-performance compiler for a dynamic language, built in modern C++17 with direct LLVM IR generation and native machine code output. This is a true compiler, not a transpiler. Implements a full multi-stage pipeline including custom lexical analysis, recursive descent parsing, AST construction, type inference, and LLVM-based optimization. Features a dynamic typing system, memory-safe symbol management, and seamless C library integration!
+A high-performance compiler for a dynamic language, built in C++17 with direct LLVM IR generation and native machine code output. This is a true compiler, not a transpiler, and it implements a full multi-stage pipeline including custom lexical analysis, recursive descent parsing, AST construction, type inference, and LLVM-based optimization. It also features a dynamic typing system, memory-safe symbol management, and seamless C library integration! Built entirely to help me learn more about compiler design and lower level programming.
 
 ## Table of Contents
 
@@ -103,13 +103,13 @@ ld --version          # Linker
 
 #### Windows
 ```bash
-.\build.bat    # Output: twc.exe
+.\build.bat    # Output: twine.exe
 ```
 
 #### Linux/macOS
 ```bash
 chmod +x build.sh
-./build.sh     # Output: ./twc
+./build.sh     # Output: ./twine
 ```
 
 ### Option 2: Using CMake
@@ -118,14 +118,14 @@ chmod +x build.sh
 mkdir build
 cd build
 cmake ..
-make     # Output: build/bin/twc
+make     # Output: build/bin/twine
 ```
 
 ### Option 3: Direct Compilation
 
 ```bash
 LLVM_FLAGS=$(llvm-config --cxxflags --ldflags --system-libs --libs core support irreader codegen mc mcparser option target)
-g++ -std=c++17 -o twc main.cpp lexer.cpp parser.cpp ast.cpp codegen.cpp $LLVM_FLAGS
+g++ -std=c++17 -o twine main.cpp lexer.cpp parser.cpp ast.cpp codegen.cpp $LLVM_FLAGS
 ```
 
 ## Usage
@@ -134,7 +134,7 @@ g++ -std=c++17 -o twc main.cpp lexer.cpp parser.cpp ast.cpp codegen.cpp $LLVM_FL
 
 ```bash
 # Compile a .tw file to executable
-twc input.tw
+twine input.tw
 
 # This creates:
 # - input.ll (LLVM IR - deleted unless --verbose)
@@ -146,7 +146,7 @@ twc input.tw
 ### Command-Line Options
 
 ```bash
-twc <input.tw> [options]
+twine <input.tw> [options]
 
 Options:
   -o <output>      Specify output executable name
@@ -162,17 +162,17 @@ Options:
 
 ```bash
 # Compile with custom output name
-twc fibonacci.tw -o fib
+twine fibonacci.tw -o fib
 
 # Generate and inspect LLVM IR
-twc program.tw --emit-ir
+twine program.tw --emit-ir
 cat program.ll
 
 # See all compilation steps
-twc program.tw --verbose
+twine program.tw --verbose
 
 # Generate optimized assembly
-twc program.tw --emit-asm
+twine program.tw --emit-asm
 ```
 
 ## Language Syntax

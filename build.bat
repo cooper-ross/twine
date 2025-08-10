@@ -24,7 +24,7 @@ REM Get LLVM flags
 for /f %%i in ('llvm-config --cxxflags --ldflags --system-libs --libs core support irreader codegen mc mcparser option target') do set LLVM_FLAGS=%%i
 
 REM Compile with proper include path
-g++ -std=c++17 -Iinclude -o twc.exe src/main.cpp src/lexer.cpp src/parser.cpp src/ast.cpp src/codegen.cpp %LLVM_FLAGS%
+g++ -std=c++17 -Iinclude -o twine.exe src/main.cpp src/lexer.cpp src/parser.cpp src/ast.cpp src/codegen.cpp %LLVM_FLAGS%
 
 if %errorlevel% neq 0 (
     echo Build failed!
@@ -33,10 +33,10 @@ if %errorlevel% neq 0 (
 )
 
 echo Build successful!
-echo Compiler is at: twc.exe
+echo Compiler is at: twine.exe
 echo.
 echo Example usage:
-echo   twc.exe examples\fibonacci.tw
-echo   twc.exe examples\math.tw --verbose
+echo   twine.exe examples\fibonacci.tw
+echo   twine.exe examples\math.tw --verbose
 echo.
 pause

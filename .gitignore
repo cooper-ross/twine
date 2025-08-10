@@ -38,8 +38,8 @@ Makefile
 *.exe
 *.out
 *.app
-twc
-twc.exe
+twine
+twine.exe
 
 # LLVM generated files
 *.ll
