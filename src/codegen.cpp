@@ -18,10 +18,7 @@ CodeGenerator::CodeGenerator(const std::string& moduleName) {
     builder = std::make_unique<llvm::IRBuilder<>>(*context);
     currentFunction = nullptr;
     
-    // Initialize with global scope
     pushScope();
-    
-    // Declare built-in functions
     declareBuiltinFunctions();
 }
 
@@ -46,7 +43,6 @@ llvm::AllocaInst* CodeGenerator::createEntryBlockAlloca(llvm::Function* function
 }
 
 llvm::Value* CodeGenerator::getVariable(const std::string& name) {
-    // Search from innermost to outermost scope
     for (auto it = symbolTables.rbegin(); it != symbolTables.rend(); ++it) {
         auto var = it->find(name);
         if (var != it->end()) {
@@ -57,29 +53,22 @@ llvm::Value* CodeGenerator::getVariable(const std::string& name) {
 }
 
 void CodeGenerator::setVariable(const std::string& name, llvm::Value* value) {
-    // Search for existing variable
     for (auto it = symbolTables.rbegin(); it != symbolTables.rend(); ++it) {
         auto var = it->find(name);
         if (var != it->end()) {
-            // For dynamic typing, we need to handle type changes
-            // Check if the value type matches the allocated type
             llvm::Type* allocatedType = var->second->getAllocatedType();
             if (value->getType() == allocatedType) {
-                // Same type, direct store
             builder->CreateStore(value, var->second);
             } else {
-                // Different type, need to create a new allocation
                 llvm::AllocaInst* newAlloca = createEntryBlockAlloca(currentFunction, name + "_new", value->getType());
                 builder->CreateStore(value, newAlloca);
-                
-                // Update the symbol table with the new allocation
+
                 var->second = newAlloca;
             }
             return;
         }
     }
     
-    // Create new variable in current scope
     if (currentFunction) {
         llvm::AllocaInst* alloca = createEntryBlockAlloca(currentFunction, name, value->getType());
         builder->CreateStore(value, alloca);
@@ -88,49 +77,38 @@ void CodeGenerator::setVariable(const std::string& name, llvm::Value* value) {
 }
 
 void CodeGenerator::declareBuiltinFunctions() {
-    // Declare printf for print implementation
     declarePrintf();
-    
-    // Declare scanf for input implementation
     declareScanf();
     
-    // Declare fgets for better input handling
     declareFgets();
-    
-    // Declare stdin
     declareStdin();
     
-    // Declare conversion helper functions
     declareSnprintf();
     declareAtof();
     declareAtoi();
     
-    // Declare math helper functions
     declareFabs();
     declareRound();
     declarePow();
     declareSqrt();
     
-    // Declare random number functions
     declareRand();
     declareSrand();
     
-    // Declare string helper functions
     declareStrlen();
     declareMalloc();
     declareStrcpy();
     declareStrcat();
     declareStrstr();
     
-    // Create print function that wraps printf
     std::vector<llvm::Type*> printParams = {
-        llvm::PointerType::getUnqual(*context)  // pointer for string (opaque pointer)
+        llvm::PointerType::getUnqual(*context)
     };
     
     llvm::FunctionType* printType = llvm::FunctionType::get(
         llvm::Type::getVoidTy(*context),
         printParams,
-        true  // variadic
+        true
     );
     
     llvm::Function* printFunc = llvm::Function::Create(
@@ -142,13 +120,12 @@ void CodeGenerator::declareBuiltinFunctions() {
     
     functions["print"] = printFunc;
     
-    // Create input function that wraps scanf
     std::vector<llvm::Type*> inputParams = {};
     
     llvm::FunctionType* inputType = llvm::FunctionType::get(
-        llvm::PointerType::getUnqual(*context),  // returns string pointer
+        llvm::PointerType::getUnqual(*context),
         inputParams,
-        false  // not variadic
+        false
     );
     
     llvm::Function* inputFunc = llvm::Function::Create(
@@ -160,15 +137,14 @@ void CodeGenerator::declareBuiltinFunctions() {
     
     functions["input"] = inputFunc;
     
-    // Create str function (convert number to string)
     std::vector<llvm::Type*> strParams = {
-        llvm::Type::getDoubleTy(*context)  // takes a double
+        llvm::Type::getDoubleTy(*context)
     };
     
     llvm::FunctionType* strType = llvm::FunctionType::get(
-        llvm::PointerType::getUnqual(*context),  // returns string pointer
+        llvm::PointerType::getUnqual(*context),
         strParams,
-        false  // not variadic
+        false
     );
     
     llvm::Function* strFunc = llvm::Function::Create(
@@ -180,15 +156,14 @@ void CodeGenerator::declareBuiltinFunctions() {
     
     functions["str"] = strFunc;
     
-    // Create num function (convert string to number)
     std::vector<llvm::Type*> numParams = {
-        llvm::PointerType::getUnqual(*context)  // takes a string
+        llvm::PointerType::getUnqual(*context)
     };
     
     llvm::FunctionType* numType = llvm::FunctionType::get(
-        llvm::Type::getDoubleTy(*context),  // returns double
+        llvm::Type::getDoubleTy(*context),
         numParams,
-        false  // not variadic
+        false
     );
     
     llvm::Function* numFunc = llvm::Function::Create(
@@ -200,15 +175,14 @@ void CodeGenerator::declareBuiltinFunctions() {
     
     functions["num"] = numFunc;
     
-    // Create int function (convert string to integer)
     std::vector<llvm::Type*> intParams = {
-        llvm::PointerType::getUnqual(*context)  // takes a string
+        llvm::PointerType::getUnqual(*context)
     };
     
     llvm::FunctionType* intType = llvm::FunctionType::get(
-        llvm::Type::getDoubleTy(*context),  // returns double (for consistency)
+        llvm::Type::getDoubleTy(*context),
         intParams,
-        false  // not variadic
+        false
     );
     
     llvm::Function* intFunc = llvm::Function::Create(
@@ -220,15 +194,14 @@ void CodeGenerator::declareBuiltinFunctions() {
     
     functions["int"] = intFunc;
     
-    // Create abs function
     std::vector<llvm::Type*> absParams = {
-        llvm::Type::getDoubleTy(*context)  // takes a double
+        llvm::Type::getDoubleTy(*context)
     };
     
     llvm::FunctionType* absType = llvm::FunctionType::get(
-        llvm::Type::getDoubleTy(*context),  // returns double
+        llvm::Type::getDoubleTy(*context),
         absParams,
-        false  // not variadic
+        false
     );
     
     llvm::Function* absFunc = llvm::Function::Create(
@@ -240,15 +213,14 @@ void CodeGenerator::declareBuiltinFunctions() {
     
     functions["abs"] = absFunc;
     
-    // Create round function
     std::vector<llvm::Type*> roundParams = {
-        llvm::Type::getDoubleTy(*context)  // takes a double
+        llvm::Type::getDoubleTy(*context)
     };
     
     llvm::FunctionType* roundType = llvm::FunctionType::get(
-        llvm::Type::getDoubleTy(*context),  // returns double
+        llvm::Type::getDoubleTy(*context),
         roundParams,
-        true  // variadic - to support optional precision parameter
+        true
     );
     
     llvm::Function* roundFunc = llvm::Function::Create(
@@ -260,16 +232,15 @@ void CodeGenerator::declareBuiltinFunctions() {
     
     functions["round"] = roundFunc;
     
-    // Create min function (variadic)
     std::vector<llvm::Type*> minParams = {
-        llvm::Type::getDoubleTy(*context),  // takes at least one double
-        llvm::Type::getDoubleTy(*context)   // takes at least two arguments
+        llvm::Type::getDoubleTy(*context),
+        llvm::Type::getDoubleTy(*context)
     };
     
     llvm::FunctionType* minType = llvm::FunctionType::get(
-        llvm::Type::getDoubleTy(*context),  // returns double
+        llvm::Type::getDoubleTy(*context),
         minParams,
-        true  // variadic - for more than two arguments
+        true
     );
     
     llvm::Function* minFunc = llvm::Function::Create(
@@ -281,16 +252,15 @@ void CodeGenerator::declareBuiltinFunctions() {
     
     functions["min"] = minFunc;
     
-    // Create max function (variadic)
     std::vector<llvm::Type*> maxParams = {
-        llvm::Type::getDoubleTy(*context),  // takes at least one double
-        llvm::Type::getDoubleTy(*context)   // takes at least two arguments
+        llvm::Type::getDoubleTy(*context),
+        llvm::Type::getDoubleTy(*context)
     };
     
     llvm::FunctionType* maxType = llvm::FunctionType::get(
-        llvm::Type::getDoubleTy(*context),  // returns double
+        llvm::Type::getDoubleTy(*context),
         maxParams,
-        true  // variadic - for more than two arguments
+        true
     );
     
     llvm::Function* maxFunc = llvm::Function::Create(
@@ -302,16 +272,15 @@ void CodeGenerator::declareBuiltinFunctions() {
     
     functions["max"] = maxFunc;
     
-    // Create pow function
     std::vector<llvm::Type*> powParams = {
-        llvm::Type::getDoubleTy(*context),  // base
-        llvm::Type::getDoubleTy(*context)   // exponent
+        llvm::Type::getDoubleTy(*context),
+        llvm::Type::getDoubleTy(*context)
     };
     
     llvm::FunctionType* powType = llvm::FunctionType::get(
-        llvm::Type::getDoubleTy(*context),  // returns double
+        llvm::Type::getDoubleTy(*context),
         powParams,
-        false  // not variadic
+        false
     );
     
     llvm::Function* powFunc = llvm::Function::Create(
@@ -323,15 +292,14 @@ void CodeGenerator::declareBuiltinFunctions() {
     
     functions["pow"] = powFunc;
     
-    // Create sqrt function
     std::vector<llvm::Type*> sqrtParams = {
-        llvm::Type::getDoubleTy(*context)  // takes a double
+        llvm::Type::getDoubleTy(*context)
     };
     
     llvm::FunctionType* sqrtType = llvm::FunctionType::get(
-        llvm::Type::getDoubleTy(*context),  // returns double
+        llvm::Type::getDoubleTy(*context),
         sqrtParams,
-        false  // not variadic
+        false
     );
     
     llvm::Function* sqrtFunc = llvm::Function::Create(
@@ -343,13 +311,12 @@ void CodeGenerator::declareBuiltinFunctions() {
     
     functions["sqrt"] = sqrtFunc;
     
-    // Create random function (returns random number from 0 to 1)
     std::vector<llvm::Type*> randomParams = {};
     
     llvm::FunctionType* randomType = llvm::FunctionType::get(
-        llvm::Type::getDoubleTy(*context),  // returns double
+        llvm::Type::getDoubleTy(*context),
         randomParams,
-        false  // not variadic
+        false
     );
     
     llvm::Function* randomFunc = llvm::Function::Create(
@@ -364,13 +331,13 @@ void CodeGenerator::declareBuiltinFunctions() {
 
 llvm::Function* CodeGenerator::declarePrintf() {
     std::vector<llvm::Type*> printfParams = {
-        llvm::PointerType::getUnqual(*context)  // pointer for format string (opaque pointer)
+        llvm::PointerType::getUnqual(*context)
     };
     
     llvm::FunctionType* printfType = llvm::FunctionType::get(
         llvm::Type::getInt32Ty(*context),
         printfParams,
-        true  // variadic
+        true
     );
     
     llvm::Function* printfFunc = llvm::Function::Create(
@@ -386,13 +353,13 @@ llvm::Function* CodeGenerator::declarePrintf() {
 
 llvm::Function* CodeGenerator::declareScanf() {
     std::vector<llvm::Type*> scanfParams = {
-        llvm::PointerType::getUnqual(*context)  // pointer for format string (opaque pointer)
+        llvm::PointerType::getUnqual(*context)
     };
     
     llvm::FunctionType* scanfType = llvm::FunctionType::get(
         llvm::Type::getInt32Ty(*context),
         scanfParams,
-        true  // variadic
+        true
     );
     
     llvm::Function* scanfFunc = llvm::Function::Create(
@@ -407,17 +374,16 @@ llvm::Function* CodeGenerator::declareScanf() {
 }
 
 llvm::Function* CodeGenerator::declareFgets() {
-    // char *fgets(char *str, int n, FILE *stream)
     std::vector<llvm::Type*> fgetsParams = {
-        llvm::PointerType::getUnqual(*context),  // char* str
-        llvm::Type::getInt32Ty(*context),        // int n
-        llvm::PointerType::getUnqual(*context)   // FILE* stream
+        llvm::PointerType::getUnqual(*context),
+        llvm::Type::getInt32Ty(*context),
+        llvm::PointerType::getUnqual(*context)
     };
     
     llvm::FunctionType* fgetsType = llvm::FunctionType::get(
-        llvm::PointerType::getUnqual(*context),  // returns char*
+        llvm::PointerType::getUnqual(*context),
         fgetsParams,
-        false  // not variadic
+        false
     );
     
     llvm::Function* fgetsFunc = llvm::Function::Create(
@@ -433,15 +399,12 @@ llvm::Function* CodeGenerator::declareFgets() {
 
 llvm::GlobalVariable* CodeGenerator::declareStdin() {
 #ifdef _WIN32
-    // On Windows with MinGW, stdin is accessed via __acrt_iob_func
-    // We'll declare this function and call it with index 0 to get stdin
     llvm::FunctionType* iobFuncType = llvm::FunctionType::get(
-        llvm::PointerType::getUnqual(*context),  // returns FILE*
-        {},  // no parameters for our purposes
+        llvm::PointerType::getUnqual(*context),
+        {},
         false
     );
     
-    // We'll create a helper function that returns stdin
     llvm::Function* getStdinFunc = llvm::Function::Create(
         iobFuncType,
         llvm::Function::ExternalLinkage,
@@ -449,14 +412,11 @@ llvm::GlobalVariable* CodeGenerator::declareStdin() {
         module.get()
     );
     
-    // Create the function body
     llvm::BasicBlock* entry = llvm::BasicBlock::Create(*context, "entry", getStdinFunc);
     llvm::IRBuilder<> tmpBuilder(entry);
-    
-    // Declare __acrt_iob_func
     llvm::FunctionType* acrtIobFuncType = llvm::FunctionType::get(
-        llvm::PointerType::getUnqual(*context),  // returns FILE*
-        {llvm::Type::getInt32Ty(*context)},      // takes int index
+        llvm::PointerType::getUnqual(*context),
+        {llvm::Type::getInt32Ty(*context)},
         false
     );
     
@@ -470,12 +430,9 @@ llvm::GlobalVariable* CodeGenerator::declareStdin() {
         );
     }
     
-    // Call __acrt_iob_func(0) to get stdin
     llvm::Value* zero = llvm::ConstantInt::get(*context, llvm::APInt(32, 0));
     llvm::Value* stdinPtr = tmpBuilder.CreateCall(acrtIobFunc, {zero});
     tmpBuilder.CreateRet(stdinPtr);
-    
-    // Create a global that will hold the stdin pointer
     llvm::GlobalVariable* stdinVar = new llvm::GlobalVariable(
         *module,
         llvm::PointerType::getUnqual(*context),
@@ -487,15 +444,14 @@ llvm::GlobalVariable* CodeGenerator::declareStdin() {
     
     return stdinVar;
 #else
-    // On Unix-like systems, stdin is a simple external global
-    llvm::Type* fileType = llvm::PointerType::getUnqual(*context);  // FILE* type
+    llvm::Type* fileType = llvm::PointerType::getUnqual(*context);
     
     llvm::GlobalVariable* stdinVar = new llvm::GlobalVariable(
         *module,
         fileType,
-        false,  // not constant
+        false,
         llvm::GlobalValue::ExternalLinkage,
-        nullptr,  // no initializer
+        nullptr,
         "stdin"
     );
     
@@ -504,17 +460,16 @@ llvm::GlobalVariable* CodeGenerator::declareStdin() {
 }
 
 llvm::Function* CodeGenerator::declareSnprintf() {
-    // int snprintf(char *str, size_t size, const char *format, ...)
     std::vector<llvm::Type*> snprintfParams = {
-        llvm::PointerType::getUnqual(*context),  // char* str
-        llvm::Type::getInt64Ty(*context),        // size_t size
-        llvm::PointerType::getUnqual(*context)   // const char* format
+        llvm::PointerType::getUnqual(*context),
+        llvm::Type::getInt64Ty(*context),
+        llvm::PointerType::getUnqual(*context)
     };
     
     llvm::FunctionType* snprintfType = llvm::FunctionType::get(
-        llvm::Type::getInt32Ty(*context),  // returns int
+        llvm::Type::getInt32Ty(*context),
         snprintfParams,
-        true  // variadic
+        true
     );
     
     llvm::Function* snprintfFunc = llvm::Function::Create(
@@ -529,15 +484,14 @@ llvm::Function* CodeGenerator::declareSnprintf() {
 }
 
 llvm::Function* CodeGenerator::declareAtof() {
-    // double atof(const char *str)
     std::vector<llvm::Type*> atofParams = {
-        llvm::PointerType::getUnqual(*context)  // const char* str
+        llvm::PointerType::getUnqual(*context)
     };
     
     llvm::FunctionType* atofType = llvm::FunctionType::get(
-        llvm::Type::getDoubleTy(*context),  // returns double
+        llvm::Type::getDoubleTy(*context),
         atofParams,
-        false  // not variadic
+        false
     );
     
     llvm::Function* atofFunc = llvm::Function::Create(
@@ -552,15 +506,14 @@ llvm::Function* CodeGenerator::declareAtof() {
 }
 
 llvm::Function* CodeGenerator::declareAtoi() {
-    // int atoi(const char *str)
     std::vector<llvm::Type*> atoiParams = {
-        llvm::PointerType::getUnqual(*context)  // const char* str
+        llvm::PointerType::getUnqual(*context)
     };
     
     llvm::FunctionType* atoiType = llvm::FunctionType::get(
-        llvm::Type::getInt32Ty(*context),  // returns int
+        llvm::Type::getInt32Ty(*context),
         atoiParams,
-        false  // not variadic
+        false
     );
     
     llvm::Function* atoiFunc = llvm::Function::Create(
@@ -575,15 +528,14 @@ llvm::Function* CodeGenerator::declareAtoi() {
 }
 
 llvm::Function* CodeGenerator::declareFabs() {
-    // double fabs(double x)
     std::vector<llvm::Type*> fabsParams = {
-        llvm::Type::getDoubleTy(*context)  // double x
+        llvm::Type::getDoubleTy(*context)
     };
     
     llvm::FunctionType* fabsType = llvm::FunctionType::get(
-        llvm::Type::getDoubleTy(*context),  // returns double
+        llvm::Type::getDoubleTy(*context),
         fabsParams,
-        false  // not variadic
+        false
     );
     
     llvm::Function* fabsFunc = llvm::Function::Create(
@@ -598,15 +550,14 @@ llvm::Function* CodeGenerator::declareFabs() {
 }
 
 llvm::Function* CodeGenerator::declareRound() {
-    // double round(double x)
     std::vector<llvm::Type*> roundParams = {
-        llvm::Type::getDoubleTy(*context)  // double x
+        llvm::Type::getDoubleTy(*context)
     };
     
     llvm::FunctionType* roundType = llvm::FunctionType::get(
-        llvm::Type::getDoubleTy(*context),  // returns double
+        llvm::Type::getDoubleTy(*context),
         roundParams,
-        false  // not variadic
+        false
     );
     
     llvm::Function* roundFunc = llvm::Function::Create(
@@ -616,21 +567,20 @@ llvm::Function* CodeGenerator::declareRound() {
         module.get()
     );
     
-    functions["mathRound"] = roundFunc;  // Store as mathRound to avoid name clash with our built-in round
+    functions["mathRound"] = roundFunc;
     return roundFunc;
 }
 
 llvm::Function* CodeGenerator::declarePow() {
-    // double pow(double base, double exponent)
     std::vector<llvm::Type*> powParams = {
-        llvm::Type::getDoubleTy(*context),  // double base
-        llvm::Type::getDoubleTy(*context)   // double exponent
+        llvm::Type::getDoubleTy(*context),
+        llvm::Type::getDoubleTy(*context)
     };
     
     llvm::FunctionType* powType = llvm::FunctionType::get(
-        llvm::Type::getDoubleTy(*context),  // returns double
+        llvm::Type::getDoubleTy(*context),
         powParams,
-        false  // not variadic
+        false
     );
     
     llvm::Function* powFunc = llvm::Function::Create(
@@ -640,20 +590,19 @@ llvm::Function* CodeGenerator::declarePow() {
         module.get()
     );
     
-    functions["mathPow"] = powFunc;  // Store as mathPow to avoid name clash with our built-in pow
+    functions["mathPow"] = powFunc;
     return powFunc;
 }
 
 llvm::Function* CodeGenerator::declareSqrt() {
-    // double sqrt(double x)
     std::vector<llvm::Type*> sqrtParams = {
-        llvm::Type::getDoubleTy(*context)  // double x
+        llvm::Type::getDoubleTy(*context)
     };
     
     llvm::FunctionType* sqrtType = llvm::FunctionType::get(
-        llvm::Type::getDoubleTy(*context),  // returns double
+        llvm::Type::getDoubleTy(*context),
         sqrtParams,
-        false  // not variadic
+        false
     );
     
     llvm::Function* sqrtFunc = llvm::Function::Create(
@@ -663,18 +612,17 @@ llvm::Function* CodeGenerator::declareSqrt() {
         module.get()
     );
     
-    functions["mathSqrt"] = sqrtFunc;  // Store as mathSqrt to avoid name clash with our built-in sqrt
+    functions["mathSqrt"] = sqrtFunc;
     return sqrtFunc;
 }
 
 llvm::Function* CodeGenerator::declareRand() {
-    // int rand(void)
     std::vector<llvm::Type*> randParams = {};
     
     llvm::FunctionType* randType = llvm::FunctionType::get(
-        llvm::Type::getInt32Ty(*context),  // returns int
+        llvm::Type::getInt32Ty(*context),
         randParams,
-        false  // not variadic
+        false
     );
     
     llvm::Function* randFunc = llvm::Function::Create(
@@ -689,15 +637,14 @@ llvm::Function* CodeGenerator::declareRand() {
 }
 
 llvm::Function* CodeGenerator::declareSrand() {
-    // void srand(unsigned int seed)
     std::vector<llvm::Type*> srandParams = {
-        llvm::Type::getInt32Ty(*context)  // unsigned int seed
+        llvm::Type::getInt32Ty(*context)
     };
     
     llvm::FunctionType* srandType = llvm::FunctionType::get(
-        llvm::Type::getVoidTy(*context),  // returns void
+        llvm::Type::getVoidTy(*context),
         srandParams,
-        false  // not variadic
+        false
     );
     
     llvm::Function* srandFunc = llvm::Function::Create(
@@ -713,7 +660,7 @@ llvm::Function* CodeGenerator::declareSrand() {
 
 llvm::Function* CodeGenerator::declarePuts() {
     std::vector<llvm::Type*> putsParams = {
-        llvm::PointerType::getUnqual(*context)  // pointer for string (opaque pointer)
+        llvm::PointerType::getUnqual(*context)
     };
     
     llvm::FunctionType* putsType = llvm::FunctionType::get(
@@ -743,7 +690,6 @@ llvm::Value* CodeGenerator::getInt32(int32_t value) {
     return llvm::ConstantInt::get(*context, llvm::APInt(32, value));
 }
 
-// Tells apart strings from boxed numbers by checking first byte
 llvm::Value* CodeGenerator::isStringPointer(llvm::Value* ptrValue, bool allowEmptyStrings) {
     llvm::Value* firstByte = builder->CreateLoad(llvm::Type::getInt8Ty(*context), 
         builder->CreateBitCast(ptrValue, llvm::PointerType::getUnqual(llvm::Type::getInt8Ty(*context))));
@@ -814,7 +760,6 @@ llvm::Value* CodeGenerator::boxValue(llvm::Value* value) {
     }
 }
 
-// Converts pointer to double: strings via atof(), boxed numbers via direct load
 llvm::Value* CodeGenerator::unboxPointerToDouble(llvm::Value* ptrValue) {
     llvm::Value* isString = isStringPointer(ptrValue, false);
     
@@ -882,7 +827,6 @@ llvm::Value* CodeGenerator::convertToBool(llvm::Value* value) {
 
 bool CodeGenerator::generate(Program* program) {
     try {
-        // Create main function
         llvm::FunctionType* mainType = llvm::FunctionType::get(
             llvm::Type::getInt32Ty(*context),
             false
@@ -1019,9 +963,7 @@ void CodeGenerator::visit(BinaryExpression* node) {
     llvm::Value* result = nullptr;
     
     if (node->op == "+") {
-        // Check if either operand is a string (pointer type)
         if (left->getType()->isPointerTy() || right->getType()->isPointerTy()) {
-            // Handle string concatenation
             result = createStringConcatenation(left, right);
         } else if (left->getType()->isDoubleTy() || right->getType()->isDoubleTy()) {
             left = convertToDouble(left);
@@ -1159,17 +1101,14 @@ void CodeGenerator::visit(AssignmentExpression* node) {
 
 void CodeGenerator::visit(CallExpression* node) {
     if (node->name == "input") {
-        // Handle input specially - reads a line from stdin
         if (!node->arguments.empty()) {
             std::cerr << "Warning: input() function takes no arguments, ignoring provided arguments" << std::endl;
         }
         
-        // Allocate buffer for input (1024 characters should be enough)
         llvm::Type* charType = llvm::Type::getInt8Ty(*context);
         llvm::Type* arrayType = llvm::ArrayType::get(charType, 1024);
         llvm::AllocaInst* buffer = builder->CreateAlloca(arrayType, nullptr, "input_buffer");
         
-        // Get pointer to first element of array
         std::vector<llvm::Value*> indices = {
             llvm::ConstantInt::get(*context, llvm::APInt(32, 0)),
             llvm::ConstantInt::get(*context, llvm::APInt(32, 0))
@@ -1180,10 +1119,8 @@ void CodeGenerator::visit(CallExpression* node) {
             indices
         );
         
-        // Get stdin pointer
         llvm::Value* stdinPtr;
 #ifdef _WIN32
-        // On Windows, call our helper function to get stdin
         llvm::Function* getStdinFunc = module->getFunction("get_stdin_ptr");
         if (!getStdinFunc) {
             // Recreate the helper if it doesn't exist
@@ -1192,7 +1129,6 @@ void CodeGenerator::visit(CallExpression* node) {
         }
         stdinPtr = builder->CreateCall(getStdinFunc, {}, "stdin_ptr");
 #else
-        // On Unix, load from the stdin global
         llvm::GlobalVariable* stdinVar = module->getGlobalVariable("stdin");
         if (!stdinVar) {
             stdinVar = declareStdin();
@@ -1200,15 +1136,11 @@ void CodeGenerator::visit(CallExpression* node) {
         stdinPtr = builder->CreateLoad(llvm::PointerType::getUnqual(*context), stdinVar, "stdin_load");
 #endif
         
-        // Call fgets to read a full line (up to 1023 chars + null terminator)
         llvm::Value* bufferSize = llvm::ConstantInt::get(*context, llvm::APInt(32, 1024));
         llvm::Value* result = builder->CreateCall(functions["fgets"], {bufferPtr, bufferSize, stdinPtr});
         
-        // Remove trailing newline if present
-        // First, find the length of the string
         llvm::Function* strlenFunc = module->getFunction("strlen");
         if (!strlenFunc) {
-            // Declare strlen if not already declared
             llvm::FunctionType* strlenType = llvm::FunctionType::get(
                 llvm::Type::getInt64Ty(*context),
                 {llvm::PointerType::getUnqual(*context)},
@@ -1224,55 +1156,41 @@ void CodeGenerator::visit(CallExpression* node) {
         
         llvm::Value* length = builder->CreateCall(strlenFunc, {bufferPtr});
         
-        // Check if last character is newline and replace with null terminator
         llvm::Value* one = llvm::ConstantInt::get(*context, llvm::APInt(64, 1));
         llvm::Value* lastCharIndex = builder->CreateSub(length, one);
         llvm::Value* lastCharPtr = builder->CreateInBoundsGEP(charType, bufferPtr, lastCharIndex);
         llvm::Value* lastChar = builder->CreateLoad(charType, lastCharPtr);
-        llvm::Value* newline = llvm::ConstantInt::get(charType, 10); // '\n'
+        llvm::Value* newline = llvm::ConstantInt::get(charType, 10);
         llvm::Value* isNewline = builder->CreateICmpEQ(lastChar, newline);
-        
-        // Create basic blocks for conditional
         llvm::BasicBlock* thenBlock = llvm::BasicBlock::Create(*context, "remove_newline", currentFunction);
         llvm::BasicBlock* mergeBlock = llvm::BasicBlock::Create(*context, "merge", currentFunction);
         
         builder->CreateCondBr(isNewline, thenBlock, mergeBlock);
         
-        // Then block: replace newline with null terminator
         builder->SetInsertPoint(thenBlock);
         llvm::Value* nullChar = llvm::ConstantInt::get(charType, 0);
         builder->CreateStore(nullChar, lastCharPtr);
         builder->CreateBr(mergeBlock);
         
-        // Merge block
         builder->SetInsertPoint(mergeBlock);
-        
-        // Return the buffer pointer as the result
         valueStack.push(bufferPtr);
         return;
     } else if (node->name == "str") {
-        // Handle str specially - converts number to string
         if (node->arguments.size() != 1) {
             std::cerr << "Error: str() expects exactly 1 argument" << std::endl;
             return;
         }
-        
-        // Evaluate the argument
         node->arguments[0]->accept(this);
         llvm::Value* value = valueStack.top();
         valueStack.pop();
         
-        // Convert to double if needed
         if (!value->getType()->isDoubleTy()) {
             value = convertToDouble(value);
         }
-        
-        // Allocate buffer for string result (32 characters should be enough for most numbers)
         llvm::Type* charType = llvm::Type::getInt8Ty(*context);
         llvm::Type* arrayType = llvm::ArrayType::get(charType, 32);
         llvm::AllocaInst* buffer = builder->CreateAlloca(arrayType, nullptr, "str_buffer");
         
-        // Get pointer to first element of array
         std::vector<llvm::Value*> indices = {
             llvm::ConstantInt::get(*context, llvm::APInt(32, 0)),
             llvm::ConstantInt::get(*context, llvm::APInt(32, 0))
@@ -1283,7 +1201,6 @@ void CodeGenerator::visit(CallExpression* node) {
             indices
         );
         
-        // Create format string for snprintf ("%g" for general format)
         llvm::GlobalVariable* format = builder->CreateGlobalString("%g");
         std::vector<llvm::Value*> formatIndices = {
             llvm::ConstantInt::get(*context, llvm::APInt(32, 0)),
@@ -1295,21 +1212,17 @@ void CodeGenerator::visit(CallExpression* node) {
             formatIndices
         );
         
-        // Call snprintf to convert number to string
         llvm::Value* bufferSize = llvm::ConstantInt::get(*context, llvm::APInt(64, 32));
         builder->CreateCall(functions["snprintf"], {bufferPtr, bufferSize, formatPtr, value});
         
-        // Return the buffer pointer as the result
         valueStack.push(bufferPtr);
         return;
     } else if (node->name == "num") {
-        // Handle num specially - converts string to number using atof
         if (node->arguments.size() != 1) {
             std::cerr << "Error: num() expects exactly 1 argument" << std::endl;
             return;
         }
         
-        // Evaluate the argument
         node->arguments[0]->accept(this);
         llvm::Value* value = valueStack.top();
         valueStack.pop();
@@ -1319,20 +1232,14 @@ void CodeGenerator::visit(CallExpression* node) {
             return;
         }
         
-        // Call atof to convert string to double
         llvm::Value* result = builder->CreateCall(functions["atof"], {value});
-        
-        // Return the result
         valueStack.push(result);
         return;
     } else if (node->name == "int") {
-        // Handle int specially - converts string to integer using atoi, then cast to double
         if (node->arguments.size() != 1) {
             std::cerr << "Error: int() expects exactly 1 argument" << std::endl;
             return;
         }
-        
-        // Evaluate the argument
         node->arguments[0]->accept(this);
         llvm::Value* value = valueStack.top();
         valueStack.pop();
@@ -1342,279 +1249,204 @@ void CodeGenerator::visit(CallExpression* node) {
             return;
         }
         
-        // Call atoi to convert string to int
         llvm::Value* intResult = builder->CreateCall(functions["atoi"], {value});
         
-        // Convert int to double for consistency with our type system
         llvm::Value* result = builder->CreateSIToFP(intResult, llvm::Type::getDoubleTy(*context));
-        
-        // Return the result
         valueStack.push(result);
         return;
     } else if (node->name == "abs") {
-        // Handle abs specially - absolute value
         if (node->arguments.size() != 1) {
             std::cerr << "Error: abs() expects exactly 1 argument" << std::endl;
             return;
         }
-        
-        // Evaluate the argument
         node->arguments[0]->accept(this);
         llvm::Value* value = valueStack.top();
         valueStack.pop();
         
-        // Convert to double if needed
         if (!value->getType()->isDoubleTy()) {
             value = convertToDouble(value);
         }
         
-        // Call fabs (C standard library) for absolute value
         llvm::Value* result = builder->CreateCall(functions["fabs"], {value});
-        
-        // Return the result
         valueStack.push(result);
         return;
     } else if (node->name == "round") {
-        // Handle round specially - round to nearest integer
         if (node->arguments.size() < 1 || node->arguments.size() > 2) {
             std::cerr << "Error: round() expects 1 or 2 arguments" << std::endl;
             return;
         }
-        
-        // Evaluate the first argument (the number to round)
         node->arguments[0]->accept(this);
         llvm::Value* value = valueStack.top();
         valueStack.pop();
         
-        // Convert to double if needed
         if (!value->getType()->isDoubleTy()) {
             value = convertToDouble(value);
         }
         
         if (node->arguments.size() == 1) {
-            // Simple case: round to integer
             llvm::Value* result = builder->CreateCall(functions["mathRound"], {value});
             valueStack.push(result);
         } else {
-            // Round to specified decimal places
-            // Evaluate the second argument (decimal places)
             node->arguments[1]->accept(this);
             llvm::Value* decimalPlaces = valueStack.top();
             valueStack.pop();
             
-            // Convert to int if needed
             if (!decimalPlaces->getType()->isDoubleTy()) {
                 decimalPlaces = convertToDouble(decimalPlaces);
             }
-            
-            // We'll use the formula: round(x * 10^d) / 10^d
-            // First, calculate 10^d (scale factor)
             llvm::Value* ten = llvm::ConstantFP::get(*context, llvm::APFloat(10.0));
             llvm::Value* scaleFactor = builder->CreateCall(functions["mathPow"], {ten, decimalPlaces});
             
-            // Multiply the value by the scale factor
             llvm::Value* scaled = builder->CreateFMul(value, scaleFactor);
-            
-            // Round the scaled value
             llvm::Value* roundedScaled = builder->CreateCall(functions["mathRound"], {scaled});
-            
-            // Divide by the scale factor to get the final result
             llvm::Value* result = builder->CreateFDiv(roundedScaled, scaleFactor);
             
             valueStack.push(result);
         }
         return;
     } else if (node->name == "min") {
-        // Handle min specially - minimum of values
         if (node->arguments.size() < 2) {
             std::cerr << "Error: min() expects at least 2 arguments" << std::endl;
             return;
         }
-        
-        // Evaluate first argument
         node->arguments[0]->accept(this);
         llvm::Value* minValue = valueStack.top();
         valueStack.pop();
         
-        // Convert to double if needed
         if (!minValue->getType()->isDoubleTy()) {
             minValue = convertToDouble(minValue);
         }
-        
-        // Compare with remaining arguments to find the minimum
         for (size_t i = 1; i < node->arguments.size(); i++) {
             node->arguments[i]->accept(this);
             llvm::Value* currentValue = valueStack.top();
             valueStack.pop();
             
-            // Convert to double if needed
             if (!currentValue->getType()->isDoubleTy()) {
                 currentValue = convertToDouble(currentValue);
             }
             
-            // Compare current value with minValue and update if needed
             llvm::Value* cmp = builder->CreateFCmpOLT(currentValue, minValue);
             minValue = builder->CreateSelect(cmp, currentValue, minValue);
         }
         
-        // Return the minimum value
         valueStack.push(minValue);
         return;
     } else if (node->name == "max") {
-        // Handle max specially - maximum of values
         if (node->arguments.size() < 2) {
             std::cerr << "Error: max() expects at least 2 arguments" << std::endl;
             return;
         }
         
-        // Evaluate first argument
         node->arguments[0]->accept(this);
         llvm::Value* maxValue = valueStack.top();
         valueStack.pop();
         
-        // Convert to double if needed
         if (!maxValue->getType()->isDoubleTy()) {
             maxValue = convertToDouble(maxValue);
         }
-        
-        // Compare with remaining arguments to find the maximum
         for (size_t i = 1; i < node->arguments.size(); i++) {
             node->arguments[i]->accept(this);
             llvm::Value* currentValue = valueStack.top();
             valueStack.pop();
             
-            // Convert to double if needed
             if (!currentValue->getType()->isDoubleTy()) {
                 currentValue = convertToDouble(currentValue);
             }
             
-            // Compare current value with maxValue and update if needed
             llvm::Value* cmp = builder->CreateFCmpOGT(currentValue, maxValue);
             maxValue = builder->CreateSelect(cmp, currentValue, maxValue);
         }
         
-        // Return the maximum value
         valueStack.push(maxValue);
         return;
     } else if (node->name == "pow") {
-        // Handle pow specially - raise to power
         if (node->arguments.size() != 2) {
             std::cerr << "Error: pow() expects exactly 2 arguments" << std::endl;
             return;
         }
         
-        // Evaluate first argument (base)
         node->arguments[0]->accept(this);
         llvm::Value* base = valueStack.top();
         valueStack.pop();
         
-        // Convert to double if needed
         if (!base->getType()->isDoubleTy()) {
             base = convertToDouble(base);
         }
-        
-        // Evaluate second argument (exponent)
         node->arguments[1]->accept(this);
         llvm::Value* exponent = valueStack.top();
         valueStack.pop();
         
-        // Convert to double if needed
         if (!exponent->getType()->isDoubleTy()) {
             exponent = convertToDouble(exponent);
         }
         
-        // Call pow (C standard library) for power operation
         llvm::Value* result = builder->CreateCall(functions["mathPow"], {base, exponent});
-        
-        // Return the result
         valueStack.push(result);
         return;
     } else if (node->name == "sqrt") {
-        // Handle sqrt specially - square root
         if (node->arguments.size() != 1) {
             std::cerr << "Error: sqrt() expects exactly 1 argument" << std::endl;
             return;
         }
-        
-        // Evaluate the argument
         node->arguments[0]->accept(this);
         llvm::Value* value = valueStack.top();
         valueStack.pop();
         
-        // Convert to double if needed
         if (!value->getType()->isDoubleTy()) {
             value = convertToDouble(value);
         }
         
-        // Call sqrt (C standard library) for square root
         llvm::Value* result = builder->CreateCall(functions["mathSqrt"], {value});
-        
-        // Return the result
         valueStack.push(result);
         return;
     } else if (node->name == "random") {
-        // Handle random specially - returns random number from 0 to 1
-        // We implement our own high-quality Linear Congruential Generator (LCG)
-        // instead of relying on the poor-quality system rand()
         if (!node->arguments.empty()) {
             std::cerr << "Warning: random() function takes no arguments, ignoring provided arguments" << std::endl;
         }
-        
-        // Create a global variable to store our LCG state
         llvm::GlobalVariable* stateVar = module->getGlobalVariable("_random_state");
         if (!stateVar) {
-            // Initialize with a non-zero value that will be replaced with time-based seed
             stateVar = new llvm::GlobalVariable(
                 *module,
-                llvm::Type::getInt64Ty(*context),  // 64-bit state
-                false,  // not constant
+                llvm::Type::getInt64Ty(*context),
+                false,
                 llvm::GlobalValue::InternalLinkage,
-                llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), 1),  // initial non-zero value
+                llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), 1),
                 "_random_state"
             );
         }
-        
-        // Create a global variable to track if we've seeded already
         llvm::GlobalVariable* seededVar = module->getGlobalVariable("_random_seeded");
         if (!seededVar) {
             seededVar = new llvm::GlobalVariable(
                 *module,
-                llvm::Type::getInt1Ty(*context),  // boolean type
-                false,  // not constant
+                llvm::Type::getInt1Ty(*context),
+                false,
                 llvm::GlobalValue::InternalLinkage,
-                llvm::ConstantInt::get(llvm::Type::getInt1Ty(*context), 0),  // initial value: false
+                llvm::ConstantInt::get(llvm::Type::getInt1Ty(*context), 0),
                 "_random_seeded"
             );
         }
-        
-        // Check if we've already seeded
         llvm::Value* alreadySeeded = builder->CreateLoad(
             llvm::Type::getInt1Ty(*context), 
             seededVar, 
             "seeded_check"
         );
         
-        // Create basic blocks for seeding logic
         llvm::BasicBlock* seedBlock = llvm::BasicBlock::Create(*context, "seed_random", currentFunction);
         llvm::BasicBlock* skipSeedBlock = llvm::BasicBlock::Create(*context, "skip_seed", currentFunction);
         llvm::BasicBlock* afterSeedBlock = llvm::BasicBlock::Create(*context, "after_seed", currentFunction);
         
-        // Branch based on whether we've already seeded
         builder->CreateCondBr(alreadySeeded, skipSeedBlock, seedBlock);
         
-        // Seed block
         builder->SetInsertPoint(seedBlock);
-        
-        // Declare time function if not already declared
         if (!module->getFunction("time")) {
             std::vector<llvm::Type*> timeParams = {
-                llvm::PointerType::getUnqual(*context)  // time_t *
+                llvm::PointerType::getUnqual(*context) // time_t *
             };
             
             llvm::FunctionType* timeType = llvm::FunctionType::get(
-                llvm::Type::getInt64Ty(*context),  // returns time_t (long)
+                llvm::Type::getInt64Ty(*context),
                 timeParams,
-                false  // not variadic
+                false
             );
             
             llvm::Function::Create(
@@ -1625,17 +1457,10 @@ void CodeGenerator::visit(CallExpression* node) {
             );
         }
         
-        // Get high-resolution seed by combining time with additional entropy
         llvm::Value* nullPtr = llvm::ConstantPointerNull::get(llvm::PointerType::getUnqual(*context));
         llvm::Value* currentTime = builder->CreateCall(module->getFunction("time"), {nullPtr});
-        
-        // Create a much better seed by combining time with stack address (for additional entropy)
-        // Get the address of a local variable to add randomness
         llvm::AllocaInst* localVar = builder->CreateAlloca(llvm::Type::getInt32Ty(*context), nullptr, "entropy");
         llvm::Value* stackAddr = builder->CreatePtrToInt(localVar, llvm::Type::getInt64Ty(*context));
-        
-        // Mix the time and stack address using a good hash function
-        // seed = (time * 1103515245ULL + stackAddr * 12345ULL + 1) ^ (stackAddr >> 16)
         llvm::Value* multiplier1 = llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), 1103515245ULL);
         llvm::Value* multiplier2 = llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), 12345ULL);
         llvm::Value* increment = llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), 1);
@@ -1649,53 +1474,34 @@ void CodeGenerator::visit(CallExpression* node) {
         llvm::Value* addrShifted = builder->CreateLShr(stackAddr, shift16);
         llvm::Value* finalSeed = builder->CreateXor(combined, addrShifted);
         
-        // Store the seed as our initial state
         builder->CreateStore(finalSeed, stateVar);
-        
-        // Mark as seeded
         builder->CreateStore(llvm::ConstantInt::get(llvm::Type::getInt1Ty(*context), 1), seededVar);
         
         builder->CreateBr(afterSeedBlock);
         
-        // Skip seed block
         builder->SetInsertPoint(skipSeedBlock);
         builder->CreateBr(afterSeedBlock);
         
-        // After seed block - generate the next random number using our LCG
         builder->SetInsertPoint(afterSeedBlock);
-        
-        // Load current state
         llvm::Value* state = builder->CreateLoad(llvm::Type::getInt64Ty(*context), stateVar, "current_state");
-        
-        // High-quality LCG constants (from Numerical Recipes)
-        // next_state = (state * 1664525ULL + 1013904223ULL) & 0xFFFFFFFFFFFFFFFFULL
         llvm::Value* a = llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), 1664525ULL);
         llvm::Value* c = llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), 1013904223ULL);
         
         llvm::Value* nextState = builder->CreateMul(state, a);
         nextState = builder->CreateAdd(nextState, c);
         
-        // Store the new state
         builder->CreateStore(nextState, stateVar);
-        
-        // Extract the high bits for better distribution
-        // Use the upper 32 bits shifted right by 16 for even better distribution
         llvm::Value* shift32 = llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), 32);
         llvm::Value* upperBits = builder->CreateLShr(nextState, shift32);
         llvm::Value* randInt = builder->CreateTrunc(upperBits, llvm::Type::getInt32Ty(*context));
         
-        // Convert to double
         llvm::Value* randDouble = builder->CreateUIToFP(randInt, llvm::Type::getDoubleTy(*context));
         
-        // Divide by 2^32 to get a value between 0 and 1
-        llvm::Value* divisor = llvm::ConstantFP::get(*context, llvm::APFloat(4294967296.0)); // 2^32
+        llvm::Value* divisor = llvm::ConstantFP::get(*context, llvm::APFloat(4294967296.0));
         llvm::Value* result = builder->CreateFDiv(randDouble, divisor);
-        
-        // Return the result
         valueStack.push(result);
         return;
     } else if (node->name == "len") {
-        // Handle len specially - returns the length of a string or array
         if (node->arguments.size() != 1) {
             throw std::runtime_error("len() expects exactly 1 argument");
         }
@@ -1707,8 +1513,6 @@ void CodeGenerator::visit(CallExpression* node) {
         if (!value->getType()->isPointerTy()) {
             throw std::runtime_error("len() expects a string or array argument");
         }
-        
-        // Check if it's an array or string by trying to access the size metadata
         llvm::Type* elementType = llvm::Type::getDoubleTy(*context);
         llvm::Value* sizePtr = builder->CreateInBoundsGEP(elementType, value,
             llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), -1));
@@ -1717,7 +1521,6 @@ void CodeGenerator::visit(CallExpression* node) {
         llvm::BasicBlock* stringBlock = llvm::BasicBlock::Create(*context, "is_string", currentFunction);
         llvm::BasicBlock* mergeBlock = llvm::BasicBlock::Create(*context, "len_merge", currentFunction);
         
-        // Check the first byte, if it's a printable character, it's likely a string
         llvm::Value* firstByte = builder->CreateLoad(llvm::Type::getInt8Ty(*context), 
             builder->CreateBitCast(value, llvm::PointerType::getUnqual(llvm::Type::getInt8Ty(*context))));
         llvm::Value* isPrintable = builder->CreateAnd(
@@ -1727,12 +1530,10 @@ void CodeGenerator::visit(CallExpression* node) {
         
         builder->CreateCondBr(isPrintable, stringBlock, arrayBlock);
         
-        // Array block - get size from metadata
         builder->SetInsertPoint(arrayBlock);
         llvm::Value* arraySize = builder->CreateLoad(elementType, sizePtr);
         builder->CreateBr(mergeBlock);
         
-        // String block - use strlen
         builder->SetInsertPoint(stringBlock);
         llvm::Function* strlenFunc = module->getFunction("strlen");
         if (!strlenFunc) {
@@ -1743,7 +1544,6 @@ void CodeGenerator::visit(CallExpression* node) {
         llvm::Value* strLengthDouble = builder->CreateUIToFP(strLength, elementType);
         builder->CreateBr(mergeBlock);
         
-        // Merge block
         builder->SetInsertPoint(mergeBlock);
         llvm::PHINode* result = builder->CreatePHI(elementType, 2);
         result->addIncoming(arraySize, arrayBlock);
@@ -1821,13 +1621,11 @@ void CodeGenerator::visit(CallExpression* node) {
         llvm::Value* dstPtr = builder->CreateInBoundsGEP(llvm::Type::getInt8Ty(*context), resultBuffer, currentIndex);
         builder->CreateStore(resultChar, dstPtr);
         
-        // Increment index
         llvm::Value* nextIndex = builder->CreateAdd(currentIndex, 
             llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), 1));
         builder->CreateStore(nextIndex, indexVar);
         builder->CreateBr(loopCondBlock);
         
-        // Add null terminator
         builder->SetInsertPoint(loopEndBlock);
         llvm::Value* nullTermPtr = builder->CreateInBoundsGEP(llvm::Type::getInt8Ty(*context), resultBuffer, length);
         builder->CreateStore(llvm::ConstantInt::get(llvm::Type::getInt8Ty(*context), 0), nullTermPtr);
@@ -1840,7 +1638,6 @@ void CodeGenerator::visit(CallExpression* node) {
             throw std::runtime_error("lower() expects exactly 1 argument");
         }
         
-        // Evaluate the argument
         node->arguments[0]->accept(this);
         llvm::Value* value = valueStack.top();
         valueStack.pop();
@@ -1855,7 +1652,6 @@ void CodeGenerator::visit(CallExpression* node) {
             strlenFunc = module->getFunction("strlen");
         }
         
-        // Get the length of the input string
         llvm::Value* length = builder->CreateCall(strlenFunc, {value});
         
         // Allocate memory for the result string (length + 1 for null terminator)
@@ -1906,13 +1702,11 @@ void CodeGenerator::visit(CallExpression* node) {
         llvm::Value* dstPtr = builder->CreateInBoundsGEP(llvm::Type::getInt8Ty(*context), resultBuffer, currentIndex);
         builder->CreateStore(resultChar, dstPtr);
         
-        // Increment index
         llvm::Value* nextIndex = builder->CreateAdd(currentIndex, 
             llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), 1));
         builder->CreateStore(nextIndex, indexVar);
         builder->CreateBr(loopCondBlock);
         
-        // Add null terminator
         builder->SetInsertPoint(loopEndBlock);
         llvm::Value* nullTermPtr = builder->CreateInBoundsGEP(llvm::Type::getInt8Ty(*context), resultBuffer, length);
         builder->CreateStore(llvm::ConstantInt::get(llvm::Type::getInt8Ty(*context), 0), nullTermPtr);
@@ -1920,7 +1714,6 @@ void CodeGenerator::visit(CallExpression* node) {
         valueStack.push(resultBuffer);
         return;
     } else if (node->name == "includes") {
-        // Handle includes specially for both strings and arrays
         if (node->arguments.size() != 2) {
             throw std::runtime_error("includes() expects exactly 2 arguments");
         }
@@ -1938,7 +1731,6 @@ void CodeGenerator::visit(CallExpression* node) {
         }
 
         if (needle->getType()->isPointerTy()) {
-            // String search using strstr
             llvm::Function* strstrFunc = module->getFunction("strstr");
             if (!strstrFunc) {
                 declareStrstr();
@@ -1951,7 +1743,6 @@ void CodeGenerator::visit(CallExpression* node) {
             llvm::Value* doubleResult = builder->CreateUIToFP(found, llvm::Type::getDoubleTy(*context));
             valueStack.push(doubleResult);
         } else {
-            // Array search
             llvm::Type* doubleType = llvm::Type::getDoubleTy(*context);
             llvm::Type* int64Type = llvm::Type::getInt64Ty(*context);
             needle = convertToDouble(needle);
@@ -1973,7 +1764,6 @@ void CodeGenerator::visit(CallExpression* node) {
             llvm::Value* index = builder->CreateLoad(int64Type, indexVar);
             llvm::Value* inBounds = builder->CreateICmpULT(index, sizeInt);
             
-            // Early exit if out of bounds
             llvm::BasicBlock* bodyBlock = llvm::BasicBlock::Create(*context, "body", currentFunction);
             builder->CreateCondBr(inBounds, bodyBlock, exitBlock);
             
@@ -1988,14 +1778,13 @@ void CodeGenerator::visit(CallExpression* node) {
             
             builder->SetInsertPoint(exitBlock);
             llvm::PHINode* result = builder->CreatePHI(doubleType, 2, "result");
-            result->addIncoming(llvm::ConstantFP::get(doubleType, 0.0), loopBlock);   // not found
-            result->addIncoming(llvm::ConstantFP::get(doubleType, 1.0), bodyBlock);   // found
+            result->addIncoming(llvm::ConstantFP::get(doubleType, 0.0), loopBlock);
+            result->addIncoming(llvm::ConstantFP::get(doubleType, 1.0), bodyBlock);
             
             valueStack.push(result);
         }
         return;
     } else if (node->name == "replace") {
-        // Handle replace specially - replaces first occurrence of old
         if (node->arguments.size() != 3) {
             throw std::runtime_error("replace() expects exactly 3 arguments");
         }
@@ -2044,7 +1833,6 @@ void CodeGenerator::visit(CallExpression* node) {
         
         builder->CreateCondBr(found, replaceBlock, noReplaceBlock);
         
-        // No replacement needed, just return original string (create a copy)
         builder->SetInsertPoint(noReplaceBlock);
         llvm::Value* haystackLen = builder->CreateCall(strlenFunc, {haystack});
         llvm::Value* haystackLenPlus1 = builder->CreateAdd(haystackLen, 
@@ -2063,17 +1851,11 @@ void CodeGenerator::visit(CallExpression* node) {
         
         llvm::Value* oldLen = builder->CreateCall(strlenFunc, {oldStr});
         llvm::Value* newLen = builder->CreateCall(strlenFunc, {newStr});
-        
-        // Calculate prefix length
         llvm::Value* prefixLen = builder->CreatePtrToInt(foundPtr, llvm::Type::getInt64Ty(*context));
         llvm::Value* haystackInt = builder->CreatePtrToInt(haystack, llvm::Type::getInt64Ty(*context));
         prefixLen = builder->CreateSub(prefixLen, haystackInt);
-        
-        // Calculate suffix start
         llvm::Value* suffixStart = builder->CreateInBoundsGEP(llvm::Type::getInt8Ty(*context), foundPtr, oldLen);
         llvm::Value* suffixLen = builder->CreateCall(strlenFunc, {suffixStart});
-        
-        // prefix + new + suffix + 1
         llvm::Value* resultLen = builder->CreateAdd(prefixLen, newLen);
         resultLen = builder->CreateAdd(resultLen, suffixLen);
         resultLen = builder->CreateAdd(resultLen, llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), 1));
@@ -2082,9 +1864,9 @@ void CodeGenerator::visit(CallExpression* node) {
         
         if (!module->getFunction("strncpy")) {
             std::vector<llvm::Type*> params = {
-                llvm::PointerType::getUnqual(*context),  // char* dest
-                llvm::PointerType::getUnqual(*context),  // const char* src
-                llvm::Type::getInt64Ty(*context)         // size_t n
+                llvm::PointerType::getUnqual(*context), // char* dest
+                llvm::PointerType::getUnqual(*context), // const char* src
+                llvm::Type::getInt64Ty(*context) // size_t n
             };
             llvm::FunctionType* funcType = llvm::FunctionType::get(
                 llvm::PointerType::getUnqual(*context),
@@ -2096,25 +1878,18 @@ void CodeGenerator::visit(CallExpression* node) {
         
         llvm::Function* strncpyFunc = module->getFunction("strncpy");
         builder->CreateCall(strncpyFunc, {resultBuffer, haystack, prefixLen});
-        
-        // Add null terminator after prefix
         llvm::Value* afterPrefix = builder->CreateInBoundsGEP(llvm::Type::getInt8Ty(*context), resultBuffer, prefixLen);
         builder->CreateStore(llvm::ConstantInt::get(llvm::Type::getInt8Ty(*context), 0), afterPrefix);
-        
-        // Concatenate new string
         llvm::Function* strcatFunc = module->getFunction("strcat");
         if (!strcatFunc) {
             declareStrcat();
             strcatFunc = module->getFunction("strcat");
         }
         builder->CreateCall(strcatFunc, {resultBuffer, newStr});
-        
-        // Concatenate suffix
         builder->CreateCall(strcatFunc, {resultBuffer, suffixStart});
         
         builder->CreateBr(mergeBlock);
         
-        // Merge block - phi node to select result
         builder->SetInsertPoint(mergeBlock);
         llvm::PHINode* resultPhi = builder->CreatePHI(llvm::PointerType::getUnqual(*context), 2, "replace_result");
         resultPhi->addIncoming(originalCopy, noReplaceBlock);
@@ -2123,7 +1898,6 @@ void CodeGenerator::visit(CallExpression* node) {
         valueStack.push(resultPhi);
         return;
     } else if (node->name == "append") {
-        // Handle append specially - appends element to array and returns new array
         if (node->arguments.size() != 2) {
             throw std::runtime_error("append() expects exactly 2 arguments");
         }
@@ -2147,12 +1921,11 @@ void CodeGenerator::visit(CallExpression* node) {
         llvm::Value* currentSize = builder->CreateLoad(elementType, sizePtr);
         llvm::Value* currentSizeInt = builder->CreateFPToUI(currentSize, llvm::Type::getInt64Ty(*context));
         
-        // Allocate new array with size + 1
         llvm::Value* newSize = builder->CreateAdd(currentSizeInt, 
             llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), 1));
         llvm::Value* elementSize = llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), 8);
         llvm::Value* totalElements = builder->CreateAdd(newSize, 
-            llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), 1)); // +1 for size metadata
+            llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), 1));
         llvm::Value* totalSize = builder->CreateMul(totalElements, elementSize);
         
         llvm::Function* mallocFunc = module->getFunction("malloc");
@@ -2219,7 +1992,6 @@ void CodeGenerator::visit(CallExpression* node) {
                 valueStack.pop();
                 
                 if (value->getType()->isPointerTy()) {
-                    // Dynamic dispatch, strings vs boxed numbers
                     llvm::Value* isString = isStringPointer(value, true);
                     
                     llvm::BasicBlock* stringBlock = llvm::BasicBlock::Create(*context, "print_string", currentFunction);
@@ -2494,7 +2266,7 @@ void CodeGenerator::visit(ForStatement* node) {
     if (node->update) {
         node->update->accept(this);
         if (!valueStack.empty()) {
-            valueStack.pop();  // Discard result
+            valueStack.pop(); // Discard result
         }
     }
     builder->CreateBr(condBlock);
@@ -2619,13 +2391,13 @@ void CodeGenerator::declareStrlen() {
     if (module->getFunction("strlen")) return;
     
     std::vector<llvm::Type*> params = {
-        llvm::PointerType::getUnqual(*context)  // const char*
+        llvm::PointerType::getUnqual(*context)
     };
     
     llvm::FunctionType* funcType = llvm::FunctionType::get(
-        llvm::Type::getInt64Ty(*context),  // size_t (64-bit)
+        llvm::Type::getInt64Ty(*context),
         params,
-        false  // not variadic
+        false
     );
     
     llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "strlen", *module);
@@ -2635,13 +2407,13 @@ void CodeGenerator::declareMalloc() {
     if (module->getFunction("malloc")) return;
     
     std::vector<llvm::Type*> params = {
-        llvm::Type::getInt64Ty(*context)  // size_t
+        llvm::Type::getInt64Ty(*context)
     };
     
     llvm::FunctionType* funcType = llvm::FunctionType::get(
-        llvm::PointerType::getUnqual(*context),  // void*
+        llvm::PointerType::getUnqual(*context),
         params,
-        false  // not variadic
+        false
     );
     
     llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "malloc", *module);
@@ -2651,14 +2423,14 @@ void CodeGenerator::declareStrcpy() {
     if (module->getFunction("strcpy")) return;
     
     std::vector<llvm::Type*> params = {
-        llvm::PointerType::getUnqual(*context),  // char* dest
-        llvm::PointerType::getUnqual(*context)   // const char* src
+        llvm::PointerType::getUnqual(*context),
+        llvm::PointerType::getUnqual(*context)
     };
     
     llvm::FunctionType* funcType = llvm::FunctionType::get(
-        llvm::PointerType::getUnqual(*context),  // char* (returns dest)
+        llvm::PointerType::getUnqual(*context),
         params,
-        false  // not variadic
+        false
     );
     
     llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "strcpy", *module);
@@ -2668,14 +2440,14 @@ void CodeGenerator::declareStrcat() {
     if (module->getFunction("strcat")) return;
     
     std::vector<llvm::Type*> params = {
-        llvm::PointerType::getUnqual(*context),  // char* dest
-        llvm::PointerType::getUnqual(*context)   // const char* src
+        llvm::PointerType::getUnqual(*context),
+        llvm::PointerType::getUnqual(*context)
     };
     
     llvm::FunctionType* funcType = llvm::FunctionType::get(
-        llvm::PointerType::getUnqual(*context),  // char* (returns dest)
+        llvm::PointerType::getUnqual(*context),
         params,
-        false  // not variadic
+        false
     );
     
     llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "strcat", *module);
@@ -2685,36 +2457,31 @@ void CodeGenerator::declareStrstr() {
     if (module->getFunction("strstr")) return;
     
     std::vector<llvm::Type*> params = {
-        llvm::PointerType::getUnqual(*context),  // const char* haystack
-        llvm::PointerType::getUnqual(*context)   // const char* needle
+        llvm::PointerType::getUnqual(*context),
+        llvm::PointerType::getUnqual(*context)
     };
     
     llvm::FunctionType* funcType = llvm::FunctionType::get(
-        llvm::PointerType::getUnqual(*context),  // char* (returns pointer to first occurrence or null)
+        llvm::PointerType::getUnqual(*context),
         params,
-        false  // not variadic
+        false
     );
     
     llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "strstr", *module);
 }
 
 llvm::Value* CodeGenerator::convertToString(llvm::Value* value) {
-    // If it's already a string, return as-is
     if (value->getType()->isPointerTy()) {
         return value;
     }
     
-    // Convert to double if needed
     if (!value->getType()->isDoubleTy()) {
         value = convertToDouble(value);
     }
-    
-    // Allocate buffer for string result (32 characters should be enough for most numbers)
     llvm::Type* charType = llvm::Type::getInt8Ty(*context);
     llvm::Type* arrayType = llvm::ArrayType::get(charType, 32);
     llvm::AllocaInst* buffer = builder->CreateAlloca(arrayType, nullptr, "str_buffer");
     
-    // Get pointer to first element of array
     std::vector<llvm::Value*> indices = {
         llvm::ConstantInt::get(*context, llvm::APInt(32, 0)),
         llvm::ConstantInt::get(*context, llvm::APInt(32, 0))
@@ -2725,7 +2492,6 @@ llvm::Value* CodeGenerator::convertToString(llvm::Value* value) {
         indices
     );
     
-    // Create format string for snprintf ("%g" for general format)
     llvm::GlobalVariable* format = builder->CreateGlobalString("%g");
     std::vector<llvm::Value*> formatIndices = {
         llvm::ConstantInt::get(*context, llvm::APInt(32, 0)),
@@ -2737,11 +2503,10 @@ llvm::Value* CodeGenerator::convertToString(llvm::Value* value) {
         formatIndices
     );
     
-    // Call snprintf to convert number to string
     llvm::Function* snprintfFunc = module->getFunction("snprintf");
     builder->CreateCall(snprintfFunc, {
         bufferPtr,
-        llvm::ConstantInt::get(*context, llvm::APInt(32, 32)),  // buffer size
+        llvm::ConstantInt::get(*context, llvm::APInt(32, 32)),
         formatPtr,
         value
     });
@@ -2750,13 +2515,10 @@ llvm::Value* CodeGenerator::convertToString(llvm::Value* value) {
 }
 
 llvm::Value* CodeGenerator::createStringConcatenation(llvm::Value* left, llvm::Value* right) {
-    // Declare necessary C library functions if not already declared
     declareStrlen();
     declareMalloc();
     declareStrcpy();
     declareStrcat();
-    
-    // Convert non-string operands to strings
     if (!left->getType()->isPointerTy()) {
         left = convertToString(left);
     }
@@ -2764,30 +2526,20 @@ llvm::Value* CodeGenerator::createStringConcatenation(llvm::Value* left, llvm::V
         right = convertToString(right);
     }
     
-    // Get strlen function
     llvm::Function* strlenFunc = module->getFunction("strlen");
-    
-    // Calculate lengths of both strings
     llvm::Value* leftLen = builder->CreateCall(strlenFunc, {left}, "leftlen");
     llvm::Value* rightLen = builder->CreateCall(strlenFunc, {right}, "rightlen");
     
-    // Calculate total length (left + right + 1 for null terminator)
     llvm::Value* totalLen = builder->CreateAdd(leftLen, rightLen, "addlen");
     totalLen = builder->CreateAdd(totalLen, llvm::ConstantInt::get(*context, llvm::APInt(64, 1)), "totallen");
-    
-    // Allocate memory for result string
     llvm::Function* mallocFunc = module->getFunction("malloc");
     llvm::Value* resultPtr = builder->CreateCall(mallocFunc, {totalLen}, "result");
     
-    // Cast to char*
     llvm::Type* charPtrType = llvm::PointerType::getUnqual(*context);
     resultPtr = builder->CreateBitCast(resultPtr, charPtrType, "resultstr");
-    
-    // Copy left string to result
     llvm::Function* strcpyFunc = module->getFunction("strcpy");
     builder->CreateCall(strcpyFunc, {resultPtr, left});
     
-    // Concatenate right string to result
     llvm::Function* strcatFunc = module->getFunction("strcat");
     builder->CreateCall(strcatFunc, {resultPtr, right});
     

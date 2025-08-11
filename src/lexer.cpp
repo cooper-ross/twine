@@ -60,12 +60,11 @@ Token Lexer::scanNumber() {
     int startColumn = column;
     size_t start = current;
     
-    advance(); // consume first digit
+    advance();
     while (isDigit(peek())) advance();
     
-    // Handle decimal numbers
     if (peek() == '.' && isDigit(peek(1))) {
-        advance(); // consume '.'
+        advance();
         while (isDigit(peek())) advance();
     }
     
@@ -77,7 +76,7 @@ Token Lexer::scanString() {
     int startLine = line;
     int startColumn = column;
     char quote = source[current];
-    advance(); // consume opening quote
+    advance();
     std::string value;
     
     while (peek() != quote && !isAtEnd()) {
@@ -103,7 +102,7 @@ Token Lexer::scanString() {
         return Token(TokenType::UNKNOWN, "", startLine, startColumn);
     }
     
-    advance(); // closing quote
+    advance();
     return Token(TokenType::STRING, value, startLine, startColumn);
 }
 
@@ -112,7 +111,7 @@ Token Lexer::scanIdentifier() {
     int startColumn = column;
     size_t start = current;
     
-    advance(); // consume first character
+    advance();
     while (isAlphaNumeric(peek())) advance();
     
     std::string value = source.substr(start, current - start);
@@ -145,8 +144,8 @@ void Lexer::skipBlockComment() {
             break;
         }
         if (peek() == '*' && peek(1) == '/') {
-            advance(); // *
-            advance(); // /
+            advance();
+            advance();
             break;
         }
         advance();
@@ -166,7 +165,6 @@ Token Lexer::nextToken() {
     
     // Numbers
     if (isDigit(c)) {
-        // Move back to the digit for scanNumber to process
         current--;
         if (column > 1) column--;
         return scanNumber();
@@ -174,7 +172,6 @@ Token Lexer::nextToken() {
     
     // Identifiers and keywords
     if (isAlpha(c)) {
-        // Move back to the first letter for scanIdentifier to process
         current--;
         if (column > 1) column--;
         return scanIdentifier();
@@ -251,7 +248,6 @@ Token Lexer::nextToken() {
         case '[': return Token(TokenType::LEFT_BRACKET, "[", startLine, startColumn);
         case ']': return Token(TokenType::RIGHT_BRACKET, "]", startLine, startColumn);
         
-        // String literals
         case '"':
         case '\'':
             // Move back to the quote for scanString to process
