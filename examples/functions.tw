@@ -1,7 +1,6 @@
 // Comprehensive test of user-defined functions in Twine
 
 print("=== User-Defined Functions Demo ===");
-print("");
 
 // Simple function with no parameters
 function getAnswer() {
@@ -53,33 +52,29 @@ function sumRange(start, end) {
     return total;
 }
 
-// Testing the functions
-print("1. Simple function:");
-print("   getAnswer() = " + str(getAnswer()));
+print("=== Basic Functions ===");
+print("Simple function:");
+print("getAnswer() = " + str(getAnswer())); // 42
 
-print("");
-print("2. Function with parameters:");
-print("   add(15, 27) = " + str(add(15, 27)));
+print("Function with parameters:");
+print("add(15, 27) = " + str(add(15, 27))); // 42
 
-print("");
-print("3. Function using built-ins:");
-print("   pythagorean(3, 4) = " + str(pythagorean(3, 4)));
+print("Function using built-ins:");
+print("pythagorean(3, 4) = " + str(pythagorean(3, 4))); // 5
 
-print("");
-print("4. Recursive function:");
-print("   factorial(5) = " + str(factorial(5)));
+print("=== Recursive Functions ===");
+print("Factorial:");
+print("factorial(5) = " + str(factorial(5))); // 120
 
-print("");
-print("5. Mutual recursion:");
-print("   isEven(8) = " + str(isEven(8)));
-print("   isOdd(8) = " + str(isOdd(8)));
-print("   isEven(7) = " + str(isEven(7)));
-print("   isOdd(7) = " + str(isOdd(7)));
+print("Mutual recursion:");
+print("isEven(8) = " + str(isEven(8))); // 1
+print("isOdd(8) = " + str(isOdd(8))); // 0
+print("isEven(7) = " + str(isEven(7))); // 0
+print("isOdd(7) = " + str(isOdd(7))); // 1
 
-print("");
-print("6. Function with loops:");
-print("   sumRange(1, 10) = " + str(sumRange(1, 10)));
+print("=== Advanced Functions ===");
+print("Function with loops:");
+print("sumRange(1, 10) = " + str(sumRange(1, 10))); // 55
 
-print("");
-print("7. Nested function calls:");
-print("   add(factorial(3), pythagorean(3, 4)) = " + str(add(factorial(3), pythagorean(3, 4))));
+print("Nested function calls:");
+print("add(factorial(3), pythagorean(3, 4)) = " + str(add(factorial(3), pythagorean(3, 4)))); // 11

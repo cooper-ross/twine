@@ -6,7 +6,7 @@ print("Length: " + str(len(message)));
 print("Uppercase: " + upper(message));
 print("Lowercase: " + lower(message));
 
-print("");
+
 print("=== String Search Tests ===");
 print("Message: " + message);
 print("Contains 'World': " + str(includes(message, "World")));
@@ -15,7 +15,7 @@ print("Contains 'Hello': " + str(includes(message, "Hello")));
 print("Contains 'xyz': " + str(includes(message, "xyz")));
 print("Contains '!': " + str(includes(message, "!")));
 
-print("");
+
 print("=== Case Conversion Tests ===");
 let mixedCase = "ThIs Is A tEsT StRiNg";
 print("Mixed case: " + mixedCase);
@@ -24,7 +24,7 @@ print("To lower: " + lower(mixedCase));
 print("Contains 'tEsT': " + str(includes(mixedCase, "tEsT")));
 print("Contains 'test': " + str(includes(mixedCase, "test")));
 
-print("");
+
 print("=== Special Characters Tests ===");
 let special = "Hello123!@#";
 print("With numbers/symbols: " + special);
@@ -34,7 +34,7 @@ print("Contains '123': " + str(includes(special, "123")));
 print("Contains '@#': " + str(includes(special, "@#")));
 
 // Test replace function
-print("");
+
 print("=== String Replacement Tests ===");
 let sentence = "The cat sat on the mat";
 print("Original: " + sentence);
@@ -43,7 +43,7 @@ print("Replace 'the' with 'a': " + replace(sentence, "the", "a"));
 print("Replace 'xyz' with '123': " + replace(sentence, "xyz", "123"));
 
 // Test with different string lengths
-print("");
+
 print("=== Replacement Length Tests ===");
 let base = "Hello World";
 print("Base: " + base);
@@ -53,7 +53,6 @@ print("Same length: " + replace(base, "World", "Earth"));
 print("Replace with empty: " + replace(base, "Hello ", ""));
 
 // Edge cases for includes and replace
-print("");
 print("=== Edge Cases ===");
 let empty = "";
 print("Empty string contains 'a': " + str(includes(empty, "a")));

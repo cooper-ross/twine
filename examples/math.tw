@@ -17,7 +17,6 @@ print("Min/Max:");
 print("min(3, -2, 5, 0) = " + str(min(3, -2, 5, 0))); // -2
 print("max(3, -2, 5, 0) = " + str(max(3, -2, 5, 0))); // 5
 
-print("");
 print("=== Practical Examples ===");
 let a = 3;
 let b = 4;

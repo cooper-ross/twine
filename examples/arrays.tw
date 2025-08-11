@@ -12,7 +12,6 @@ print("Mixed array length: " + str(len(mixed)));
 print("Empty array length: " + str(len(empty)));
 
 // Array indexing
-print("");
 print("=== Array Indexing ===");
 print("First element: " + str(numbers[0]));
 print("Last element: " + str(numbers[4]));
@@ -23,7 +22,6 @@ numbers[2] = 100;
 print("After modification: " + str(numbers[2]));
 
 // Array append
-print("");
 print("=== Array Append ===");
 let arr = [1, 2];
 print("Original: [" + str(arr[0]) + ", " + str(arr[1]) + "]");
@@ -33,7 +31,6 @@ arr = append(arr, 4);
 print("After append(4): length = " + str(len(arr)));
 
 // Dynamic array building
-print("");
 print("=== Dynamic Array Building ===");
 let dynamic = [];
 for (let i = 0; i < 5; i = i + 1) {
@@ -45,13 +42,11 @@ for (let i = 0; i < len(dynamic); i = i + 1) {
 }
 
 // Array with expressions
-print("");
 print("=== Array Expressions ===");
 let expr = [1 + 2, 3 * 4, 5 - 1];
 print("Expression array: [" + str(expr[0]) + ", " + str(expr[1]) + ", " + str(expr[2]) + "]");
 
 // Nested array access
-print("");
 print("=== Complex Array Operations ===");
 let data = [100, 200, 300, 400, 500];
 let sum = 0;
