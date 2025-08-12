@@ -9,7 +9,6 @@ A high-performance compiler for a dynamic language, built in C++17 with direct L
 - [Building the Compiler](#building-the-compiler)
 - [Usage](#usage)
 - [Language Syntax](#language-syntax)
-- [API Reference](#api-reference)
 - [Contributing](#contributing)
 
 ## Features
@@ -436,20 +435,11 @@ function getAnswer() {
     return 42;
 }
 
-// Function with parameters
-function add(a, b) {
-    return a + b;
-}
-
 // Function with multiple parameters
 function pythagorean(a, b) {
     return sqrt(a * a + b * b);
 }
-```
 
-#### Recursive Functions
-
-```javascript
 // Basic recursion
 function factorial(n) {
     if (n <= 1) {
@@ -458,72 +448,21 @@ function factorial(n) {
         return n * factorial(n - 1);
     }
 }
-
-// Mutual recursion
-function isEven(n) {
-    if (n == 0) {
-        return 1;
-    } else {
-        return isOdd(n - 1);
-    }
-}
-
-function isOdd(n) {
-    if (n == 0) {
-        return 0;
-    } else {
-        return isEven(n - 1);
-    }
-}
 ```
 
-#### Functions with Control Flow
+## Contributing
 
-```javascript
-// Function with loops and local variables
-function sumRange(start, end) {
-    let total = 0;
-    for (let i = start; i <= end; i = i + 1) {
-        total = total + i;
-    }
-    return total;
-}
+### Adding New Features
 
-// Function with conditional logic
-function max(a, b) {
-    if (a > b) {
-        return a;
-    } else {
-        return b;
-    }
-}
-```
+1. **New Statement Types**:
+   - Define AST node in `ast.h`
+   - Implement accept method in `ast.cpp`
+   - Add parsing in `parser.cpp`
+   - Add visitor method in `codegen.cpp`
 
-#### Function Calls
-
-```javascript
-// Calling functions
-let result = add(15, 27); // 42
-let hypotenuse = pythagorean(3, 4); // 5
-let fact5 = factorial(5); // 120
-
-// Nested function calls
-let complex = add(factorial(3), pythagorean(3, 4)); // 6 + 5 = 11
-
-// Functions in expressions
-let area = pythagorean(3, 4) * 2; // 10
-```
-
-#### Function Features
-
-- **Dynamic Typing**: Functions can return different types based on conditions
-- **Variable Scope**: Local variables are scoped to the function
-- **Recursion**: Full support for recursive and mutually recursive functions
-- **Parameter Passing**: Pass by value for all parameters
-- **Return Values**: Functions can return any data type or no value (null)
-- **Built-in Integration**: Functions can call built-in functions seamlessly
-
-## API Reference
+2. **Built-in Functions**:
+   - Add declaration in `declareBuiltinFunctions()`
+   - Add special handling in `visit(CallExpression*)`
 
 ### Token Types
 
@@ -552,26 +491,6 @@ enum class TokenType {
     END_OF_FILE, UNKNOWN
 };
 ```
-
-### AST Node Types
-
-- **Expressions**: NumberLiteral, StringLiteral, BooleanLiteral, NullLiteral, Identifier, BinaryExpression, UnaryExpression, AssignmentExpression, CallExpression
-- **Statements**: ExpressionStatement, VariableDeclaration, BlockStatement, IfStatement, WhileStatement, ForStatement, ReturnStatement, FunctionDeclaration
-- **Program**: Root node containing all top-level statements
-
-## Contributing
-
-### Adding New Features
-
-1. **New Statement Types**:
-   - Define AST node in `ast.h`
-   - Implement accept method in `ast.cpp`
-   - Add parsing in `parser.cpp`
-   - Add visitor method in `codegen.cpp`
-
-2. **Built-in Functions**:
-   - Add declaration in `declareBuiltinFunctions()`
-   - Add special handling in `visit(CallExpression*)`
 
 ## License
 
