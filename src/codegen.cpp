@@ -89,6 +89,8 @@ void CodeGenerator::declareBuiltinFunctions() {
     
     declareFabs();
     declareRound();
+    declareFloor();
+    declareCeil();
     declarePow();
     declareSqrt();
     
@@ -569,6 +571,50 @@ llvm::Function* CodeGenerator::declareRound() {
     
     functions["mathRound"] = roundFunc;
     return roundFunc;
+}
+
+llvm::Function* CodeGenerator::declareFloor() {
+    std::vector<llvm::Type*> floorParams = {
+        llvm::Type::getDoubleTy(*context)
+    };
+    
+    llvm::FunctionType* floorType = llvm::FunctionType::get(
+        llvm::Type::getDoubleTy(*context),
+        floorParams,
+        false
+    );
+    
+    llvm::Function* floorFunc = llvm::Function::Create(
+        floorType,
+        llvm::Function::ExternalLinkage,
+        "floor",
+        module.get()
+    );
+    
+    functions["mathFloor"] = floorFunc;
+    return floorFunc;
+}
+
+llvm::Function* CodeGenerator::declareCeil() {
+    std::vector<llvm::Type*> ceilParams = {
+        llvm::Type::getDoubleTy(*context)
+    };
+    
+    llvm::FunctionType* ceilType = llvm::FunctionType::get(
+        llvm::Type::getDoubleTy(*context),
+        ceilParams,
+        false
+    );
+    
+    llvm::Function* ceilFunc = llvm::Function::Create(
+        ceilType,
+        llvm::Function::ExternalLinkage,
+        "ceil",
+        module.get()
+    );
+    
+    functions["mathCeil"] = ceilFunc;
+    return ceilFunc;
 }
 
 llvm::Function* CodeGenerator::declarePow() {
@@ -1397,6 +1443,40 @@ void CodeGenerator::visit(CallExpression* node) {
         }
         
         llvm::Value* result = builder->CreateCall(functions["mathSqrt"], {value});
+        valueStack.push(result);
+        return;
+    } else if (node->name == "floor") {
+        if (node->arguments.size() != 1) {
+            std::cerr << "Error: floor() expects exactly 1 argument" << std::endl;
+            return;
+        }
+
+        node->arguments[0]->accept(this);
+        llvm::Value* value = valueStack.top();
+        valueStack.pop();
+        
+        if (!value->getType()->isDoubleTy()) {
+            value = convertToDouble(value);
+        }
+        
+        llvm::Value* result = builder->CreateCall(functions["mathFloor"], {value});
+        valueStack.push(result);
+        return;
+    } else if (node->name == "ceil") {
+        if (node->arguments.size() != 1) {
+            std::cerr << "Error: ceil() expects exactly 1 argument" << std::endl;
+            return;
+        }
+        
+        node->arguments[0]->accept(this);
+        llvm::Value* value = valueStack.top();
+        valueStack.pop();
+        
+        if (!value->getType()->isDoubleTy()) {
+            value = convertToDouble(value);
+        }
+        
+        llvm::Value* result = builder->CreateCall(functions["mathCeil"], {value});
         valueStack.push(result);
         return;
     } else if (node->name == "random") {

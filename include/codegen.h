@@ -54,6 +54,8 @@ private:
     // Math
     llvm::Function* declareFabs();
     llvm::Function* declareRound();
+    llvm::Function* declareFloor();
+    llvm::Function* declareCeil();
     llvm::Function* declarePow();
     llvm::Function* declareSqrt();
     llvm::Function* declareRand();

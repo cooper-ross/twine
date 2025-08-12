@@ -51,6 +51,8 @@ A high-performance compiler for a dynamic language, built in C++17 with direct L
 - **Math Functions**:
   - `abs(x)`: Absolute value
   - `round(x, [decimals])`: Round to nearest integer or decimal place
+  - `floor(x)`: Round down to nearest integer
+  - `ceil(x)`: Round up to nearest integer
   - `min(a, b, ...)`: Find minimum value
   - `max(a, b, ...)`: Find maximum value
   - `pow(x, y)`: Raise x to power of y
@@ -407,6 +409,8 @@ print("Square root: " + str(sqrt(16))); // 4
 print("2 raised to power 3: " + str(pow(2, 3))); // 8
 print("Round 3.7: " + str(round(3.7))); // 4
 print("Round PI to 2 decimals: " + str(round(3.14159, 2))); // 3.14
+print("Floor 3.7: " + str(floor(3.7))); // 3
+print("Ceil 3.2: " + str(ceil(3.2))); // 4
 print("Min of 5 and 10: " + str(min(5, 10))); // 5
 print("Max of values: " + str(max(3, 7, 2))); // 7
 print("Random number: " + str(random())); // e.g., 0.573821

@@ -12,6 +12,8 @@ print("pow(2, 3) = " + str(pow(2, 3))); // 8
 
 print("Rounding:");
 print("round(3.14159, 2) = " + str(round(3.14159, 2))); // 3.14
+print("floor(3.7) = " + str(floor(3.7))); // 3
+print("ceil(3.2) = " + str(ceil(3.2))); // 4
 
 print("Min/Max:");
 print("min(3, -2, 5, 0) = " + str(min(3, -2, 5, 0))); // -2
