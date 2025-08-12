@@ -52,6 +52,9 @@ A high-performance compiler for a dynamic language, built in C++17 with direct L
   - `round(x, [decimals])`: Round to nearest integer or decimal place
   - `floor(x)`: Round down to nearest integer
   - `ceil(x)`: Round up to nearest integer
+  - `sin(x)`: Sine of x (radians)
+  - `cos(x)`: Cosine of x (radians)
+  - `tan(x)`: Tangent of x (radians)
   - `min(a, b, ...)`: Find minimum value
   - `max(a, b, ...)`: Find maximum value
   - `pow(x, y)`: Raise x to power of y
@@ -410,6 +413,9 @@ print("Round 3.7: " + str(round(3.7))); // 4
 print("Round PI to 2 decimals: " + str(round(3.14159, 2))); // 3.14
 print("Floor 3.7: " + str(floor(3.7))); // 3
 print("Ceil 3.2: " + str(ceil(3.2))); // 4
+print("Sine of PI/2: " + str(sin(3.14159/2))); // ~1.0
+print("Cosine of 0: " + str(cos(0))); // 1.0
+print("Tangent of PI/4: " + str(tan(3.14159/4))); // ~1.0
 print("Min of 5 and 10: " + str(min(5, 10))); // 5
 print("Max of values: " + str(max(3, 7, 2))); // 7
 print("Random number: " + str(random())); // e.g., 0.573821

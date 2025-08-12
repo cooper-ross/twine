@@ -56,6 +56,9 @@ private:
     llvm::Function* declareRound();
     llvm::Function* declareFloor();
     llvm::Function* declareCeil();
+    llvm::Function* declareSin();
+    llvm::Function* declareCos();
+    llvm::Function* declareTan();
     llvm::Function* declarePow();
     llvm::Function* declareSqrt();
     llvm::Function* declareRand();

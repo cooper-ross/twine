@@ -91,6 +91,9 @@ void CodeGenerator::declareBuiltinFunctions() {
     declareRound();
     declareFloor();
     declareCeil();
+    declareSin();
+    declareCos();
+    declareTan();
     declarePow();
     declareSqrt();
     
@@ -615,6 +618,72 @@ llvm::Function* CodeGenerator::declareCeil() {
     
     functions["mathCeil"] = ceilFunc;
     return ceilFunc;
+}
+
+llvm::Function* CodeGenerator::declareSin() {
+    std::vector<llvm::Type*> sinParams = {
+        llvm::Type::getDoubleTy(*context)
+    };
+    
+    llvm::FunctionType* sinType = llvm::FunctionType::get(
+        llvm::Type::getDoubleTy(*context),
+        sinParams,
+        false
+    );
+    
+    llvm::Function* sinFunc = llvm::Function::Create(
+        sinType,
+        llvm::Function::ExternalLinkage,
+        "sin",
+        module.get()
+    );
+    
+    functions["mathSin"] = sinFunc;
+    return sinFunc;
+}
+
+llvm::Function* CodeGenerator::declareCos() {
+    std::vector<llvm::Type*> cosParams = {
+        llvm::Type::getDoubleTy(*context)
+    };
+    
+    llvm::FunctionType* cosType = llvm::FunctionType::get(
+        llvm::Type::getDoubleTy(*context),
+        cosParams,
+        false
+    );
+    
+    llvm::Function* cosFunc = llvm::Function::Create(
+        cosType,
+        llvm::Function::ExternalLinkage,
+        "cos",
+        module.get()
+    );
+    
+    functions["mathCos"] = cosFunc;
+    return cosFunc;
+}
+
+llvm::Function* CodeGenerator::declareTan() {
+    std::vector<llvm::Type*> tanParams = {
+        llvm::Type::getDoubleTy(*context)
+    };
+    
+    llvm::FunctionType* tanType = llvm::FunctionType::get(
+        llvm::Type::getDoubleTy(*context),
+        tanParams,
+        false
+    );
+    
+    llvm::Function* tanFunc = llvm::Function::Create(
+        tanType,
+        llvm::Function::ExternalLinkage,
+        "tan",
+        module.get()
+    );
+    
+    functions["mathTan"] = tanFunc;
+    return tanFunc;
 }
 
 llvm::Function* CodeGenerator::declarePow() {
@@ -1477,6 +1546,54 @@ void CodeGenerator::visit(CallExpression* node) {
         }
         
         llvm::Value* result = builder->CreateCall(functions["mathCeil"], {value});
+        valueStack.push(result);
+        return;
+    } else if (node->name == "sin") {
+        if (node->arguments.size() != 1) {
+            std::cerr << "Error: sin() expects exactly 1 argument" << std::endl;
+            return;
+        }
+        node->arguments[0]->accept(this);
+        llvm::Value* value = valueStack.top();
+        valueStack.pop();
+        
+        if (!value->getType()->isDoubleTy()) {
+            value = convertToDouble(value);
+        }
+        
+        llvm::Value* result = builder->CreateCall(functions["mathSin"], {value});
+        valueStack.push(result);
+        return;
+    } else if (node->name == "cos") {
+        if (node->arguments.size() != 1) {
+            std::cerr << "Error: cos() expects exactly 1 argument" << std::endl;
+            return;
+        }
+        node->arguments[0]->accept(this);
+        llvm::Value* value = valueStack.top();
+        valueStack.pop();
+        
+        if (!value->getType()->isDoubleTy()) {
+            value = convertToDouble(value);
+        }
+        
+        llvm::Value* result = builder->CreateCall(functions["mathCos"], {value});
+        valueStack.push(result);
+        return;
+    } else if (node->name == "tan") {
+        if (node->arguments.size() != 1) {
+            std::cerr << "Error: tan() expects exactly 1 argument" << std::endl;
+            return;
+        }
+        node->arguments[0]->accept(this);
+        llvm::Value* value = valueStack.top();
+        valueStack.pop();
+        
+        if (!value->getType()->isDoubleTy()) {
+            value = convertToDouble(value);
+        }
+        
+        llvm::Value* result = builder->CreateCall(functions["mathTan"], {value});
         valueStack.push(result);
         return;
     } else if (node->name == "random") {

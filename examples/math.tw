@@ -15,6 +15,11 @@ print("round(3.14159, 2) = " + str(round(3.14159, 2))); // 3.14
 print("floor(3.7) = " + str(floor(3.7))); // 3
 print("ceil(3.2) = " + str(ceil(3.2))); // 4
 
+print("Trigonometric Functions:");
+print("sin(PI/2) = " + str(sin(3.14159/2))); // ~1.0
+print("cos(0) = " + str(cos(0))); // 1.0
+print("tan(PI/4) = " + str(tan(3.14159/4))); // ~1.0
+
 print("Min/Max:");
 print("min(3, -2, 5, 0) = " + str(min(3, -2, 5, 0))); // -2
 print("max(3, -2, 5, 0) = " + str(max(3, -2, 5, 0))); // 5
