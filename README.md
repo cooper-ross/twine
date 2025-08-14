@@ -1,6 +1,6 @@
 # Twine: Dynamic Language Compiler with LLVM
 
-A high-performance compiler for a dynamic language, built in C++17 with direct LLVM IR generation and native machine code output. This is a true compiler, not a transpiler, and it implements a full multi-stage pipeline including custom lexical analysis, recursive descent parsing, AST construction, type inference, and LLVM-based optimization. It also features a dynamic typing system, memory-safe symbol management, and seamless C library integration! Built entirely to help me learn more about compiler design and lower level programming.
+A high-performance compiler for a dynamic language, built in C++17 with direct LLVM IR generation and native machine code output. It's a true compiler, not a transpiler, so it implements a full multi-stage pipeline including custom lexical analysis, recursive descent parsing, AST construction, type inference, and LLVM-based optimization.
 
 ## Table of Contents
 
@@ -436,11 +436,6 @@ Twine supports user-defined functions with full recursion, parameter passing, an
 #### Function Declaration
 
 ```javascript
-// Simple function with no parameters
-function getAnswer() {
-    return 42;
-}
-
 // Function with multiple parameters
 function pythagorean(a, b) {
     return sqrt(a * a + b * b);
