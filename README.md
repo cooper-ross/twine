@@ -5,11 +5,8 @@ A high-performance compiler for a dynamic language, built in C++17 with direct L
 ## Table of Contents
 
 - [Features](#features)
-- [Prerequisites](#prerequisites)
 - [Building the Compiler](#building-the-compiler)
 - [Usage](#usage)
-- [Language Syntax](#language-syntax)
-- [Contributing](#contributing)
 
 ## Features
 
